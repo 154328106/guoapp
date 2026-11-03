@@ -205,6 +205,16 @@ func (d *Downloader) resolveHongguoMedia(ctx context.Context, task Task) (provid
 	if err := ctx.Err(); err != nil {
 		return providerMedia{}, err
 	}
+	media, multiErr := d.resolveHongguoAppMultiMedia(ctx, videoID)
+	if multiErr == nil {
+		return media, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return providerMedia{}, err
+	}
+	if publicError(multiErr).Error() != publicError(nativeErr).Error() {
+		nativeErr = fmt.Errorf("%v；批量通道：%v", publicError(nativeErr), publicError(multiErr))
+	}
 	media, pageErr := d.resolveHongguoWebMedia(ctx, seriesID, videoID)
 	if pageErr == nil {
 		return media, nil

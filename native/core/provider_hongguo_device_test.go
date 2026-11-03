@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func hongguoDeviceFixture(t *testing.T, rejected map[string]bool, registerFails 
 	var requests []string
 	registered := 0
 	d := sourceFixtureDownloader(t, func(request *http.Request) (*http.Response, error) {
-		if request.URL.String() == hongguoDeviceRegisterURL+"?"+request.URL.RawQuery {
+		if address := strings.TrimSuffix(request.URL.String(), "?"+request.URL.RawQuery); address == hongguoDeviceRegisterURL || address == hongguoDeviceRegisterBackupURL {
 			registered++
 			requests = append(requests, "register")
 			if request.URL.Query().Get("device_id") != "" || request.Header.Get("X-Argus") != "" {
@@ -97,7 +98,8 @@ func TestHongguoRegisterFailurePausesAndKeepsOldDevice(t *testing.T) {
 	if state := d.hongguoCatalogSnapshot(); state.DeviceID != "7" || state.Registered {
 		t.Fatal("failed registration changed the device", state)
 	}
-	if got := *requests; len(got) != 3 || got[0] != "register" || got[1] != "detail@7" || got[2] != "detail@7" {
+	// 主端点、备用端点各试一次，之后进入静默期，第二次请求不再注册
+	if got := *requests; len(got) != 4 || got[0] != "register" || got[1] != "register" || got[2] != "detail@7" || got[3] != "detail@7" {
 		t.Fatal("registration was not paused after failure", got)
 	}
 }

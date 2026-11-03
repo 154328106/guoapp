@@ -13,10 +13,15 @@ import (
 )
 
 const (
-	hongguoDeviceRegisterURL   = "https://log.snssdk.com/service/2/device_register/"
-	hongguoDeviceRotations     = 3
-	hongguoDeviceRegisterPause = 10 * time.Minute
+	hongguoDeviceRegisterURL = "https://log.snssdk.com/service/2/device_register/"
+	// 备用注册端点（番茄系 applog 域，justforlxz/drama-hub 在用）：主端点失败时再试一次
+	hongguoDeviceRegisterBackupURL = "https://log5-applog-lf.fqnovel.com/service/2/device_register/"
+	hongguoDeviceRotations         = 3
+	// 失败后的静默期。原为 10 分钟：iOS 首次启动网络权限弹窗期间注册失败后要等很久，改为 1 分钟
+	hongguoDeviceRegisterPause = time.Minute
 )
+
+var hongguoDeviceRegisterURLs = []string{hongguoDeviceRegisterURL, hongguoDeviceRegisterBackupURL}
 
 type hongguoHelperDeviceKey struct{}
 
@@ -75,6 +80,21 @@ func (downloader *Downloader) ensureHongguoDevice(ctx context.Context, helper bo
 }
 
 func (downloader *Downloader) registerHongguoDevice(ctx context.Context) (string, string, error) {
+	var failures []error
+	for _, endpoint := range hongguoDeviceRegisterURLs {
+		deviceID, installID, err := downloader.registerHongguoDeviceAt(ctx, endpoint)
+		if err == nil {
+			return deviceID, installID, nil
+		}
+		if ctx.Err() != nil {
+			return "", "", err
+		}
+		failures = append(failures, err)
+	}
+	return "", "", errors.Join(failures...)
+}
+
+func (downloader *Downloader) registerHongguoDeviceAt(ctx context.Context, endpoint string) (string, string, error) {
 	header := map[string]any{
 		"display_name": "红果免费短剧", "aid": 8662, "app_version": "7.3.5.32", "version_code": 73532,
 		"manifest_version_code": 73532, "update_version_code": 73532, "channel": "update_64", "package": "com.phoenix.read",
@@ -93,7 +113,7 @@ func (downloader *Downloader) registerHongguoDevice(ctx context.Context) (string
 	query.Del("device_id")
 	query.Del("iid")
 	query.Set("req_id", uuidLike())
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, hongguoDeviceRegisterURL, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", "", err
 	}

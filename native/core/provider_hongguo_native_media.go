@@ -24,7 +24,32 @@ func (downloader *Downloader) resolveHongguoAppMedia(ctx context.Context, videoI
 	if err != nil {
 		return providerMedia{}, err
 	}
-	data := nestedMap(result, "data")
+	return decodeHongguoAppModel(nestedMap(result, "data"))
+}
+
+// resolveHongguoAppMultiMedia 走 App 的批量取流端点 multi_video_model/v1（同一设备身份），
+// 作为 video_model/v1 失败时的第二条官方通道；返回结构与单集端点的 data 一致，按 vid 分组。
+// 2026-11 实测返回明文 main_url + spade_a；个别集可能是 key_seed 加密地址，解析不了就交给后面的通道。
+func (downloader *Downloader) resolveHongguoAppMultiMedia(ctx context.Context, videoID string) (providerMedia, error) {
+	if !hongguoNumericID.MatchString(videoID) {
+		return providerMedia{}, errors.New("红果视频 ID 无效")
+	}
+	payload := map[string]any{
+		"biz_param":          map[string]any{"device_level": 3, "need_all_video_definition": true, "video_platform": 1024},
+		"mixed_video_id_map": map[string][]string{"1004": {videoID}},
+	}
+	result, err := downloader.hongguoAppRequest(ctx, http.MethodPost, "/novel/player/multi_video_model/v1/", nil, payload)
+	if err != nil {
+		return providerMedia{}, err
+	}
+	data := nestedMap(nestedMap(result, "data"), videoID)
+	if len(data) == 0 {
+		return providerMedia{}, errors.New("红果批量取流未返回该集")
+	}
+	return decodeHongguoAppModel(data)
+}
+
+func decodeHongguoAppModel(data map[string]any) (providerMedia, error) {
 	model, _ := data["video_model"].(map[string]any)
 	if encoded, ok := data["video_model"].(string); ok && encoded != "" {
 		if decoded, err := decodeHongguoBase64(encoded); err == nil && len(decoded) > 0 {
