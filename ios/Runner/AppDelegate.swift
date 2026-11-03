@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import DuanjuCore
 import CFNetwork
+import CoreTelephony
 import AVFoundation
 import MediaPlayer
 
@@ -9,6 +10,25 @@ import MediaPlayer
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private var originalBrightness: CGFloat?
   private let volumeView = MPVolumeView(frame: CGRect(x: -100, y: -100, width: 1, height: 1))
+  // 国行 iOS 首次启动会弹「允许使用无线数据」。在用户点允许之前，Go 核心（BSD socket）发出的请求
+  // 会让本进程网络一直失败直到重启，所以先用 URLSession 探测 + CTCellularData 判断，Dart 侧等放行后再发请求。
+  private let cellularData = CTCellularData()
+  private var networkProbeSucceeded = false
+  private var networkProbing = false
+
+  private func probeNetwork() {
+    guard !networkProbing, !networkProbeSucceeded,
+          let url = URL(string: "https://www.apple.com/library/test/success.html") else { return }
+    networkProbing = true
+    var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+    request.httpMethod = "HEAD"
+    URLSession.shared.dataTask(with: request) { _, response, _ in
+      DispatchQueue.main.async {
+        self.networkProbing = false
+        if response is HTTPURLResponse { self.networkProbeSucceeded = true }
+      }
+    }.resume()
+  }
 
   private var keyWindow: UIWindow? {
     UIApplication.shared.connectedScenes
@@ -24,6 +44,8 @@ import MediaPlayer
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     ZgjEnsureCoreLinked()
+    cellularData.cellularDataRestrictionDidUpdateNotifier = { _ in }
+    if cellularData.restrictedState != .notRestricted { probeNetwork() }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -61,6 +83,21 @@ import MediaPlayer
           if let original = self.originalBrightness { self.screen?.brightness = original }
           self.originalBrightness = nil
           result(true)
+          return
+        case "networkReady":
+          switch self.cellularData.restrictedState {
+          case .notRestricted:
+            result("ready")
+          case .restricted:
+            result(self.networkProbeSucceeded ? "ready" : "denied")
+          default:
+            if self.networkProbeSucceeded {
+              result("ready")
+            } else {
+              self.probeNetwork()
+              result("pending")
+            }
+          }
           return
         case "volume":
           result(Double(AVAudioSession.sharedInstance().outputVolume))

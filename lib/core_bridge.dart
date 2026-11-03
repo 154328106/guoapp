@@ -9,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import 'models.dart';
+import 'network_gate.dart';
 import 'danmaku_models.dart';
 import 'background_downloads.dart';
 import 'local_store.dart';
@@ -551,6 +552,7 @@ class NativeRepository extends AppRepository {
       if (action == 'resolve' && access != null && !access!.canDownload) {
         input['force'] = true;
       }
+      if (!unrestricted && !background) await NetworkGate.wait();
       final body = jsonEncode(input);
       final response =
           await Isolate.run(

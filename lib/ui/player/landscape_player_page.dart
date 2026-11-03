@@ -66,6 +66,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
   late final AnimationController _sheet;
   double _sheetExtent = 1;
   bool _pulling = false;
+  double _swipeDy = 0;
   int _group = 0;
   int? _groupFor;
   bool _holding = false;
@@ -355,6 +356,30 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     } else {
       _sheet.value > .6 ? _openSheet() : _closeSheet();
     }
+  }
+
+  void _swipeEpisode(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    final distance = _swipeDy;
+    _swipeDy = 0;
+    final up = velocity < -400 || velocity.abs() <= 400 && distance < -80;
+    final down = velocity > 400 || velocity.abs() <= 400 && distance > 80;
+    if (!up && !down) return;
+    final session = _session;
+    final target = session.index + (up ? 1 : -1);
+    if (target < 0 || target >= session.detail.episodes.length) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(up ? '已经是最后一集了' : '已经是第一集了'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      return;
+    }
+    unawaited(HapticFeedback.selectionClick());
+    unawaited(session.play(target));
   }
 
   /// 列表已经滚到顶还往下拉 → 带着面板一起往下收
@@ -1292,62 +1317,73 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
           animation: _sheet,
           builder: (context, _) {
             final t = _sheet.value;
-            return Stack(
-              children: [
-                // 收起时视频上下的空白处：长按打开「播放设置」（倍速、画质等），
-                // 不用再去点视频右上角的设置；长按视频本身仍是 2 倍速
-                Positioned.fill(
-                  child: IgnorePointer(
-                    ignoring: t > .02,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onLongPress: () {
-                        unawaited(HapticFeedback.selectionClick());
-                        unawaited(_openSettings());
-                      },
+            // 收起时（视频居中）上滑下一集、下滑上一集，跟竖屏短剧一致；面板展开时关掉，免得跟列表滚动抢手势
+            final collapsed =
+                _sheet.status == AnimationStatus.dismissed && t <= .02;
+            return GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onVerticalDragStart: collapsed ? (_) => _swipeDy = 0 : null,
+              onVerticalDragUpdate: collapsed
+                  ? (details) => _swipeDy += details.primaryDelta ?? 0
+                  : null,
+              onVerticalDragEnd: collapsed ? _swipeEpisode : null,
+              child: Stack(
+                children: [
+                  // 收起时视频上下的空白处：长按打开「播放设置」（倍速、画质等），
+                  // 不用再去点视频右上角的设置；长按视频本身仍是 2 倍速
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      ignoring: t > .02,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onLongPress: () {
+                          unawaited(HapticFeedback.selectionClick());
+                          unawaited(_openSettings());
+                        },
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  top: padding.top,
-                  height: titleHeight,
-                  child: IgnorePointer(
-                    child: Opacity(
-                      opacity: (1 - t * 2).clamp(0.0, 1.0),
-                      child: _titleBar(),
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: padding.top,
+                    height: titleHeight,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: (1 - t * 2).clamp(0.0, 1.0),
+                        child: _titleBar(),
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: collapsedTop + (expandedTop - collapsedTop) * t,
-                  height: videoHeight,
-                  child: video,
-                ),
-                Positioned(
-                  left: 14,
-                  right: 14,
-                  bottom: barBottom,
-                  height: barHeight,
-                  child: IgnorePointer(
-                    ignoring: t > .02,
-                    child: Opacity(
-                      opacity: (1 - t * 2).clamp(0.0, 1.0),
-                      child: _collapsedBar(),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: collapsedTop + (expandedTop - collapsedTop) * t,
+                    height: videoHeight,
+                    child: video,
+                  ),
+                  Positioned(
+                    left: 14,
+                    right: 14,
+                    bottom: barBottom,
+                    height: barHeight,
+                    child: IgnorePointer(
+                      ignoring: t > .02,
+                      child: Opacity(
+                        opacity: (1 - t * 2).clamp(0.0, 1.0),
+                        child: _collapsedBar(),
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: sheetTop + (1 - t) * _sheetExtent,
-                  height: _sheetExtent,
-                  child: _sheetPanel(context),
-                ),
-              ],
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: sheetTop + (1 - t) * _sheetExtent,
+                    height: _sheetExtent,
+                    child: _sheetPanel(context),
+                  ),
+                ],
+              ),
             );
           },
         );
