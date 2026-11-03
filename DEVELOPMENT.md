@@ -26,7 +26,7 @@ flutter run
 ## 出包
 
 ~~~sh
-python3 scripts/build_android.py                 # 红果鉴
+python3 scripts/build_android.py                 # 果子熟了
 python3 scripts/build_android.py --all-sources   # 真果鉴
 python3 scripts/build_android.py --abi arm64-v8a
 python scripts/build_windows.py [--all-sources]
@@ -36,7 +36,7 @@ python3 scripts/build_ios.py --core-only [--simulator]
 python3 scripts/build_ios.py --export-options /path/to/ExportOptions.plist
 ~~~
 
-产物在 `dist/android`、`dist/windows`、`dist/ios`、`dist/macos`，红果鉴以 `hongguojian-` 开头，真果鉴以 `zhenguojian-` 开头。macOS 出 arm64 + x86_64 通用 dmg；dmg 的安装窗口（背景图、图标位置、隐藏工具栏）由 `dmgbuild` 写入 `.DS_Store`，打包机需要 `pip install dmgbuild Pillow`，没装时会退回普通镜像并提示。默认 ad-hoc 签名，从网络下载的 dmg 在其他 Mac 上首次打开会被 Gatekeeper 拦一次（右键「打开」，或执行 `xattr -dr com.apple.quarantine /Applications/红果鉴.app`）。有 Developer ID 时用 `package_release.py --platform macos --identity "Developer ID Application: ..."` 重新打包并公证，才能免掉这一步。本机 Android 签名使用 `android/key.properties`（不入库）。
+产物在 `dist/android`、`dist/windows`、`dist/ios`、`dist/macos`，果子熟了以 `hongguojian-` 开头，真果鉴以 `zhenguojian-` 开头。macOS 出 arm64 + x86_64 通用 dmg；dmg 的安装窗口（背景图、图标位置、隐藏工具栏）由 `dmgbuild` 写入 `.DS_Store`，打包机需要 `pip install dmgbuild Pillow`，没装时会退回普通镜像并提示。默认 ad-hoc 签名，从网络下载的 dmg 在其他 Mac 上首次打开会被 Gatekeeper 拦一次（右键「打开」，或执行 `xattr -dr com.apple.quarantine /Applications/果子熟了.app`）。有 Developer ID 时用 `package_release.py --platform macos --identity "Developer ID Application: ..."` 重新打包并公证，才能免掉这一步。本机 Android 签名使用 `android/key.properties`（不入库）。
 
 其他脚本：`generate_brand_assets.py` 从 `brand_icon.svg` 生成各平台图标；`clear_app_data.py`、`clear_catalog_cache.py` 清理 Windows 上的应用数据和剧库缓存。
 
@@ -90,7 +90,7 @@ Go RE2 正则**不支持 lookahead**。解析多线路播放列表时不能用 `
 2. 在 `CHANGELOG.md` 新增同名一节（标题如 `## 1.0.1+101`），工作流会把它写入 Release 说明；未验证的改动标为开发快照。
 3. 推送到 `main`，在 Actions 中手动运行 **Build app packages**。
 
-工作流先检查版本：tag `app-v{version}`（`+` 替换为 `-`）或同名 Release 已存在时直接失败。随后四个平台各构建红果鉴、真果鉴两版：
+工作流先检查版本：tag `app-v{version}`（`+` 替换为 `-`）或同名 Release 已存在时直接失败。随后四个平台各构建果子熟了、真果鉴两版：
 
 | 产物 | 内容 |
 | --- | --- |
@@ -116,4 +116,4 @@ npx wrangler d1 execute guoapp-stats --remote --command "SELECT COUNT(DISTINCT i
 npx wrangler d1 execute guoapp-stats --remote --command "SELECT platform, build, version, COUNT(*) FROM pings WHERE day = date('now', '+8 hours') GROUP BY 1, 2, 3 ORDER BY 4 DESC"  # 今日分布
 ~~~
 
-应用显示名：Android 在 `android/app/build.gradle.kts`，Windows 在 `windows/runner/app_branding.cmake`，iOS 由 Xcode「Thin Binary」构建阶段按 `DART_DEFINES` 写入，macOS 由 `scripts/package_release.py` 打包时改 `CFBundleDisplayName` / `CFBundleName` / `CFBundleIdentifier` 后重新签名。iOS 的 `CFBundleDisplayName` 用英文 `HongGuoJian` / `ZhenGuoJian` 以通过侧载工具的名称校验，中文名写在 `zh-Hans.lproj/InfoPlist.strings`。macOS 关闭了 App Sandbox，以便本地播放代理和自选下载目录正常工作；系统代理由 `MainFlutterWindow.swift` 的 `duanju/device` 通道读取。
+应用显示名：Android 在 `android/app/build.gradle.kts`，Windows 在 `windows/runner/app_branding.cmake`，iOS 由 Xcode「Thin Binary」构建阶段按 `DART_DEFINES` 写入，macOS 由 `scripts/package_release.py` 打包时改 `CFBundleDisplayName` / `CFBundleName` / `CFBundleIdentifier` 后重新签名。iOS 的 `CFBundleDisplayName` 用英文 `GuoZiShuLe` / `ZhenGuoJian` 以通过侧载工具的名称校验，中文名写在 `zh-Hans.lproj/InfoPlist.strings`。macOS 关闭了 App Sandbox，以便本地播放代理和自选下载目录正常工作；系统代理由 `MainFlutterWindow.swift` 的 `duanju/device` 通道读取。

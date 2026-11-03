@@ -3,25 +3,44 @@ import io
 import json
 from pathlib import Path
 
-import resvg_py
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageStat
 
 root = Path(__file__).resolve().parents[1]
-parser = argparse.ArgumentParser(description='从统一图形生成红果鉴 / 真果鉴平台资源；需要 Pillow 和 resvg-py。')
+parser = argparse.ArgumentParser(description='从统一图形生成果子熟了 / 真果鉴平台资源；需要 Pillow（用 SVG 时另需 resvg-py）。')
 parser.add_argument('--output', type=Path, default=root)
 parser.add_argument('--font', type=Path, default=Path('/System/Library/Fonts/PingFang.ttc'))
 options = parser.parse_args()
 output = options.output
-source = (root / 'scripts/brand_icon.svg').read_text(encoding='utf-8')
+raster = root / 'scripts/brand_icon.png'
 
-def render(svg):
-    png = resvg_py.svg_to_bytes(svg_string=svg, width=1024, height=1024)
-    return Image.open(io.BytesIO(bytes(png))).convert('RGBA')
+if raster.exists():
+    # 位图图标：1024 满幅不透明方图（白色图形 + 纯色/渐变底）。
+    # 安卓自适应图标需要「前景层 + 背景色」，这里把接近白色的图形抠成前景，背景取非白像素的平均色。
+    icon = Image.open(raster).convert('RGB').resize((1024, 1024), Image.Resampling.LANCZOS)
+    r, g, b = icon.split()
+    darkest = ImageChops.darker(ImageChops.darker(r, g), b)
+    background_mask = darkest.point(lambda v: 255 if v < 128 else 0)
+    background_color = tuple(round(c) for c in ImageStat.Stat(icon, background_mask).mean)
+    floor = round(min(background_color))
+    alpha = darkest.point(lambda v: max(0, min(255, round((v - floor) * 255 / max(1, 255 - floor)))))
+    foreground = Image.new('RGBA', (1024, 1024), (255, 255, 255, 0))
+    foreground.putalpha(alpha)
+    silhouette = foreground
+    launcher_background = '#%02X%02X%02X' % background_color
+    icon = icon.convert('RGBA')
+else:
+    import resvg_py
+    source = (root / 'scripts/brand_icon.svg').read_text(encoding='utf-8')
 
-foreground = render(source)
-silhouette = render(source.replace(' filter="url(#shadow)"', ''))
-icon = Image.new('RGBA', (1024, 1024), '#CDE5F9')
-icon.alpha_composite(foreground)
+    def render(svg):
+        png = resvg_py.svg_to_bytes(svg_string=svg, width=1024, height=1024)
+        return Image.open(io.BytesIO(bytes(png))).convert('RGBA')
+
+    foreground = render(source)
+    silhouette = render(source.replace(' filter="url(#shadow)"', ''))
+    icon = Image.new('RGBA', (1024, 1024), '#CDE5F9')
+    icon.alpha_composite(foreground)
+    launcher_background = '#CDE5F9'
 rounded = icon.copy()
 corners = Image.new('L', (1024, 1024), 0)
 ImageDraw.Draw(corners).rounded_rectangle((0, 0, 1023, 1023), radius=236, fill=255)
@@ -65,15 +84,21 @@ for density, scale in [('mdpi', 1), ('hdpi', 1.5), ('xhdpi', 2), ('xxhdpi', 3), 
 font_path = options.font
 if not font_path.exists():
     for candidate in ('/System/Library/Fonts/Hiragino Sans GB.ttc',
-                      '/System/Library/Fonts/STHeiti Medium.ttc'):
+                      '/System/Library/Fonts/STHeiti Medium.ttc',
+                      'C:/Windows/Fonts/msyhbd.ttc', 'C:/Windows/Fonts/msyh.ttc'):
         if Path(candidate).exists():
             font_path = Path(candidate)
             break
 font = ImageFont.truetype(str(font_path), 76)
-for name, resource in [('红果鉴', 'tv_banner'), ('真果鉴', 'tv_banner_all_sources')]:
+for name, resource in [('果子熟了', 'tv_banner'), ('真果鉴', 'tv_banner_all_sources')]:
     banner = Image.new('RGB', (640, 360), '#F5F9FC')
     badge = rounded.resize((180, 180), Image.Resampling.LANCZOS)
     banner.paste(badge, (44, 90), badge)
     draw = ImageDraw.Draw(banner)
     draw.text((255, 128), name, font=font, fill='#3B4552')
     save(banner, f'android/app/src/main/res/drawable-xhdpi/{resource}.png')
+
+background_xml = output / 'android/app/src/main/res/values/ic_launcher_background.xml'
+background_xml.write_text(background_xml.read_text(encoding='utf-8').replace(
+    background_xml.read_text(encoding='utf-8').split('>')[2].split('<')[0], launcher_background), encoding='utf-8')
+print('图标已生成；安卓自适应图标背景色', launcher_background)

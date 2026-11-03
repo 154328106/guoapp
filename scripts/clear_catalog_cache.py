@@ -8,7 +8,7 @@ from pathlib import Path
 
 APPS = {
     "zhen": ("真果鉴", "zhenguojian.exe"),
-    "hong": ("红果鉴", "hongguojian.exe"),
+    "hong": ("果子熟了", "hongguojian.exe"),
 }
 
 

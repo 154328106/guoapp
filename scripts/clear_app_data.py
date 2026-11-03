@@ -28,7 +28,7 @@ def main() -> int:
         return 0
     shutil.rmtree(directory)
     print(f"已删除 {directory}")
-    print("完成，真果鉴与红果鉴共用此目录，两者的设置、追剧、收藏、缓存、日志和默认下载目录均已清空")
+    print("完成，真果鉴与果子熟了共用此目录，两者的设置、追剧、收藏、缓存、日志和默认下载目录均已清空")
     return 0
 
 
