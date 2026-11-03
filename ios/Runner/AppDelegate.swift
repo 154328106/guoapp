@@ -11,9 +11,12 @@ import MediaPlayer
   private var originalBrightness: CGFloat?
   private let volumeView = MPVolumeView(frame: CGRect(x: -100, y: -100, width: 1, height: 1))
   // 国行 iOS 首次启动会弹「允许使用无线数据」。在用户点允许之前，Go 核心（BSD socket）发出的请求
-  // 会让本进程网络一直失败直到重启，所以先用 URLSession 探测 + CTCellularData 判断，Dart 侧等放行后再发请求。
+  // 会让本进程网络一直失败直到重启，所以 Dart 侧等原生 URLSession 探测成功后再发请求。
+  // 实测首启时 CTCellularData.restrictedState 在用户点允许之前就可能不是 unknown，不能作为放行依据，
+  // 只认探测成功；成功过一次就记进 UserDefaults，之后启动直接放行。
   private let cellularData = CTCellularData()
-  private var networkProbeSucceeded = false
+  private static let networkGrantedKey = "networkGrantedOnce"
+  private var networkProbeSucceeded = UserDefaults.standard.bool(forKey: AppDelegate.networkGrantedKey)
   private var networkProbing = false
 
   private func probeNetwork() {
@@ -25,7 +28,10 @@ import MediaPlayer
     URLSession.shared.dataTask(with: request) { _, response, _ in
       DispatchQueue.main.async {
         self.networkProbing = false
-        if response is HTTPURLResponse { self.networkProbeSucceeded = true }
+        if response is HTTPURLResponse {
+          self.networkProbeSucceeded = true
+          UserDefaults.standard.set(true, forKey: AppDelegate.networkGrantedKey)
+        }
       }
     }.resume()
   }
@@ -44,8 +50,11 @@ import MediaPlayer
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     ZgjEnsureCoreLinked()
-    cellularData.cellularDataRestrictionDidUpdateNotifier = { _ in }
-    if cellularData.restrictedState != .notRestricted { probeNetwork() }
+    // 授权状态一变（用户点了允许）就立刻再探测一次，不用等下一轮轮询
+    cellularData.cellularDataRestrictionDidUpdateNotifier = { _ in
+      DispatchQueue.main.async { self.probeNetwork() }
+    }
+    probeNetwork()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -85,18 +94,11 @@ import MediaPlayer
           result(true)
           return
         case "networkReady":
-          switch self.cellularData.restrictedState {
-          case .notRestricted:
+          if self.networkProbeSucceeded {
             result("ready")
-          case .restricted:
-            result(self.networkProbeSucceeded ? "ready" : "denied")
-          default:
-            if self.networkProbeSucceeded {
-              result("ready")
-            } else {
-              self.probeNetwork()
-              result("pending")
-            }
+          } else {
+            self.probeNetwork()
+            result("pending")
           }
           return
         case "volume":
