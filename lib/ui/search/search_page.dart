@@ -23,10 +23,14 @@ class SearchPage extends StatefulWidget {
     required this.store,
     required this.source,
     this.query = '',
+    this.embedded = false,
   });
   final LocalStore store;
   final SourceSite source;
   final String query;
+
+  /// 作为底栏「搜索」tab 常驻时为 true：不自动弹键盘
+  final bool embedded;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -114,7 +118,7 @@ class _SearchPageState extends State<SearchPage> {
       hint: '在 ${widget.source.name} 中搜索',
       controller: _controller,
       focusNode: _focus,
-      autofocus: widget.query.isEmpty,
+      autofocus: !widget.embedded && widget.query.isEmpty,
       onChanged: _changed,
       onSubmitted: _submit,
       letterKeyboard: widget.store.televisionKeyboard,
@@ -153,12 +157,14 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _body(BuildContext context) {
     final television = AppScope.of(context).television;
+    // 手机底栏是毛玻璃、内容延伸到它下面，底部要让出底栏高度
+    final bottom = MediaQuery.paddingOf(context).bottom;
     if (_suggestions.isNotEmpty && _controller.text.trim() != _submitted) {
       return ListView(
         key: const ValueKey('suggest'),
         padding: television
             ? const EdgeInsets.fromLTRB(televisionInset, 8, televisionInset, 27)
-            : const EdgeInsets.symmetric(vertical: 8),
+            : EdgeInsets.fromLTRB(0, 8, 0, 8 + bottom),
         children: [
           for (final (index, item) in _suggestions.indexed)
             EnterOnce(
@@ -240,7 +246,7 @@ class _SearchPageState extends State<SearchPage> {
                 inset,
                 8,
                 inset,
-                television ? 27 : 16,
+                (television ? 27 : 16) + bottom,
               ),
               sliver: SliverToBoxAdapter(child: FeedFooter(feed: results)),
             ),
@@ -272,7 +278,12 @@ class _SearchPageState extends State<SearchPage> {
       key: const ValueKey('recent'),
       padding: AppScope.of(context).television
           ? const EdgeInsets.fromLTRB(televisionInset, 8, televisionInset, 27)
-          : const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          : EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              24 + MediaQuery.paddingOf(context).bottom,
+            ),
       children: [
         Row(
           children: [

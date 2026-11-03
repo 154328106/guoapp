@@ -43,7 +43,8 @@ class SourceBar extends StatelessWidget {
     return switch (form) {
       FormFactor.phone => PageHeader(
         title: source,
-        actions: [switcher, search, ...actions],
+        // 手机端搜索已放到底栏 tab
+        actions: [switcher, ...actions],
       ),
       FormFactor.pad || FormFactor.window => PageHeader(
         title: source,

@@ -28,6 +28,7 @@ class EpisodeGrid extends StatefulWidget {
     this.downloading = const {},
     this.minCellWidth,
     this.inset = 16,
+    this.start = 0,
   });
   final List<Episode> episodes;
   final int current;
@@ -41,6 +42,10 @@ class EpisodeGrid extends StatefulWidget {
   final Set<int> downloading;
   final double? minCellWidth;
   final double inset;
+
+  /// [episodes] 只是全部剧集里从 [start] 开始的一段（分页显示时用）。
+  /// current / selected / downloaded / downloading / onPick 用的都是全局下标。
+  final int start;
 
   @override
   State<EpisodeGrid> createState() => _EpisodeGridState();
@@ -62,7 +67,8 @@ class _EpisodeGridState extends State<EpisodeGrid> {
   List<Episode> get _episodes => widget.episodes;
   Set<int> get _selected => widget.selected;
   bool _locked(int index) =>
-      widget.downloaded.contains(index) || widget.downloading.contains(index);
+      widget.downloaded.contains(widget.start + index) ||
+      widget.downloading.contains(widget.start + index);
 
   @override
   void didUpdateWidget(EpisodeGrid oldWidget) {
@@ -110,7 +116,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
     final last = index < _dragAnchor ? _dragAnchor : index;
     final range = [
       for (var item = first; item <= last; item++)
-        if (!_locked(item)) item,
+        if (!_locked(item)) widget.start + item,
     ];
     _selected
       ..clear()
@@ -121,14 +127,15 @@ class _EpisodeGridState extends State<EpisodeGrid> {
 
   void _toggle(int index) {
     if (_locked(index)) return;
-    if (!_selected.remove(index)) _selected.add(index);
+    final absolute = widget.start + index;
+    if (!_selected.remove(absolute)) _selected.add(absolute);
     widget.onSelectionChanged();
   }
 
   void _dragStart(Offset point) {
     final index = _hit(point, exact: true);
     if (index == null) return;
-    _dragAdds = !_selected.contains(index);
+    _dragAdds = !_selected.contains(widget.start + index);
     _dragAnchor = index;
     _dragBase = Set.of(_selected);
     _dragPoint = point;
@@ -187,8 +194,14 @@ class _EpisodeGridState extends State<EpisodeGrid> {
   }
 
   void _reveal({required bool animate}) {
-    if (!mounted || !_scroll.hasClients || widget.current < 0) return;
-    final top = _top + widget.current ~/ _columns * _rowExtent;
+    final local = widget.current - widget.start;
+    if (!mounted ||
+        !_scroll.hasClients ||
+        local < 0 ||
+        local >= _episodes.length) {
+      return;
+    }
+    final top = _top + local ~/ _columns * _rowExtent;
     final position = _scroll.position;
     final view = position.viewportDimension;
     if (top >= position.pixels && top + _cellHeight <= position.pixels + view) {
@@ -251,20 +264,23 @@ class _EpisodeGridState extends State<EpisodeGrid> {
                     child: index < _episodes.length
                         ? _EpisodeCell(
                             episode: _episodes[index],
-                            current: index == widget.current,
-                            watched: index < widget.current,
+                            current: widget.start + index == widget.current,
+                            watched: widget.start + index < widget.current,
                             selected: selecting
-                                ? _selected.contains(index)
+                                ? _selected.contains(widget.start + index)
                                 : null,
-                            marker: widget.downloaded.contains(index)
+                            marker:
+                                widget.downloaded.contains(widget.start + index)
                                 ? Icons.check_rounded
-                                : widget.downloading.contains(index)
+                                : widget.downloading.contains(
+                                    widget.start + index,
+                                  )
                                 ? Icons.arrow_downward_rounded
                                 : null,
                             onPressed: _locked(index)
                                 ? null
                                 : !selecting
-                                ? () => widget.onPick(index)
+                                ? () => widget.onPick(widget.start + index)
                                 : widget.touch
                                 ? () => _toggle(index)
                                 : null,

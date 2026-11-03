@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,15 +14,19 @@ import '../explore/explore_page.dart';
 import '../explore/source_actions.dart';
 import '../follow/follow_page.dart';
 import '../mine/mine_page.dart';
+import '../search/search_page.dart';
 import '../update_prompt.dart';
 import '../widgets/bar_button.dart';
 import '../theme/motion.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/motion/motion_widgets.dart';
+import '../widgets/page_header.dart';
 import '../widgets/source_bar.dart';
+import '../widgets/status_view.dart';
 
 enum AppTab {
   explore('发现', Icons.explore_outlined, Icons.explore),
+  search('搜索', Icons.search_rounded, Icons.saved_search_rounded),
   follow('追剧', Icons.bookmark_border_rounded, Icons.bookmark_rounded),
   mine('我的', Icons.person_outline_rounded, Icons.person_rounded);
 
@@ -116,7 +121,13 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  void _select(AppTab tab) => setState(() => _tab = tab);
+  void _select(AppTab tab) {
+    // 手机/平板切 tab 时收起搜索页的键盘；电视靠焦点导航，不能乱清焦点
+    if (tab != _tab && !AppScope.of(context).television) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
+    setState(() => _tab = tab);
+  }
 
   void _followFocus() {
     final previous = _lastFocus;
@@ -160,6 +171,7 @@ class _AppShellState extends State<AppShell> {
 
   Widget _root(AppTab tab) => switch (tab) {
     AppTab.explore => ExplorePage(key: _explore, store: widget.store),
+    AppTab.search => _SearchTab(store: widget.store),
     AppTab.follow => FollowPage(
       store: widget.store,
       entryFocus: _followEntry,
@@ -215,23 +227,33 @@ class _AppShellState extends State<AppShell> {
         if (!didPop) _back();
       },
       child: switch (AppScope.formFactorOf(context)) {
+        // extendBody：页面内容延伸到底栏下面，底栏毛玻璃才透得出内容；
+        // 各 tab 页底部用 MediaQuery.paddingOf(context).bottom 让出底栏高度
         FormFactor.phone => Scaffold(
+          extendBody: true,
           body: pages,
           bottomNavigationBar: covered
               ? null
-              : NavigationBar(
-                  selectedIndex: _tab.index,
-                  onDestinationSelected: (index) =>
-                      _select(AppTab.values[index]),
-                  destinations: [
-                    for (final tab in AppTab.values)
-                      NavigationDestination(
-                        key: ValueKey('nav-${tab.name}'),
-                        icon: _badged(tab, Icon(tab.icon)),
-                        selectedIcon: _badged(tab, Icon(tab.selectedIcon)),
-                        label: tab.label,
-                      ),
-                  ],
+              : _GlassBar(
+                  child: NavigationBar(
+                    height: 68,
+                    backgroundColor: Colors.transparent,
+                    surfaceTintColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    elevation: 0,
+                    selectedIndex: _tab.index,
+                    onDestinationSelected: (index) =>
+                        _select(AppTab.values[index]),
+                    destinations: [
+                      for (final tab in AppTab.values)
+                        NavigationDestination(
+                          key: ValueKey('nav-${tab.name}'),
+                          icon: _badged(tab, Icon(tab.icon)),
+                          selectedIcon: _badged(tab, Icon(tab.selectedIcon)),
+                          label: tab.label,
+                        ),
+                    ],
+                  ),
                 ),
         ),
         FormFactor.pad || FormFactor.window => _wide(pages),
@@ -257,7 +279,7 @@ class _AppShellState extends State<AppShell> {
                         final entry = switch (_tab) {
                           AppTab.follow => _followEntry,
                           AppTab.mine => _mineEntry,
-                          AppTab.explore => null,
+                          AppTab.explore || AppTab.search => null,
                         };
                         if (event is KeyUpEvent ||
                             event.logicalKey != LogicalKeyboardKey.arrowDown ||
@@ -289,12 +311,13 @@ class _AppShellState extends State<AppShell> {
       spacing: 6,
       children: [
         for (final tab in AppTab.values)
-          _TelevisionTab(
-            tab: tab,
-            selected: tab == _tab,
-            focusNode: _tabFocus[tab.index],
-            onTap: () => _select(tab),
-          ),
+          if (tab != AppTab.search)
+            _TelevisionTab(
+              tab: tab,
+              selected: tab == _tab,
+              focusNode: _tabFocus[tab.index],
+              onTap: () => _select(tab),
+            ),
       ],
     );
     final store = widget.store;
@@ -588,6 +611,78 @@ class _SideItem extends StatelessWidget {
         radius: metrics.itemHeight / 2,
         child: expanded ? item : Tooltip(message: tab.label, child: item),
       ),
+    );
+  }
+}
+
+/// 底栏毛玻璃：背景模糊 + 半透明底色 + 顶部细分隔线
+class _GlassBar extends StatelessWidget {
+  const _GlassBar({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.surfaceContainer.withValues(alpha: dark ? 0.6 : 0.68),
+            border: Border(
+              top: BorderSide(
+                color: colors.outlineVariant.withValues(alpha: 0.5),
+                width: 0.5,
+              ),
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// 「搜索」tab：跟随当前站源（只搜当前站源），切站源时整页重建
+class _SearchTab extends StatelessWidget {
+  const _SearchTab({required this.store});
+  final LocalStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    if (AppScope.of(context).television) return const SizedBox.shrink();
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) {
+        final id = store.source;
+        if (id.isEmpty) {
+          return const Scaffold(
+            body: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  PageHeader(title: '搜索'),
+                  Expanded(
+                    child: StatusView(
+                      title: '暂无可用站源',
+                      message: '请在站源管理中开启站源，或联系管理员开放权限。',
+                      icon: Icons.public_off_rounded,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return SearchPage(
+          key: ValueKey(id),
+          store: store,
+          source: SourceSite.byId(id),
+          embedded: true,
+        );
+      },
     );
   }
 }
