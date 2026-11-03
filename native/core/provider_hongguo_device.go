@@ -47,16 +47,23 @@ func (downloader *Downloader) ensureHongguoDevice(ctx context.Context, helper bo
 	if settled() {
 		return nil
 	}
-	if time.Now().Before(client.registerPausedUntil) {
-		return errors.New("红果设备注册暂不可用")
+	if wait := time.Until(client.registerPausedUntil); wait > 0 {
+		// 带上上次失败的原因，否则只看到「暂不可用」无从排查（如 iOS 首次启动时网络权限弹窗未允许）
+		minutes := int(wait.Minutes()) + 1
+		if client.registerFailure != nil {
+			return fmt.Errorf("红果设备注册暂不可用，%d 分钟后重试（上次失败：%v）", minutes, client.registerFailure)
+		}
+		return fmt.Errorf("红果设备注册暂不可用，%d 分钟后重试", minutes)
 	}
 	deviceID, installID, err := downloader.registerHongguoDevice(ctx)
 	if err != nil {
 		if ctx.Err() == nil {
 			client.registerPausedUntil = time.Now().Add(hongguoDeviceRegisterPause)
+			client.registerFailure = err
 		}
 		return err
 	}
+	client.registerFailure = nil
 	client.mu.Lock()
 	if helper {
 		client.state.HelperDeviceID, client.state.HelperInstallID = deviceID, installID

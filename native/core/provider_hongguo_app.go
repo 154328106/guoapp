@@ -44,6 +44,7 @@ type hongguoAppClient struct {
 	catalogMu           sync.Mutex
 	deviceMu            sync.Mutex
 	registerPausedUntil time.Time
+	registerFailure     error
 	baseURL             string
 	state               hongguoCatalogState
 	details             map[string]hongguoDetailEntry
