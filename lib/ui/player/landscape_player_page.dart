@@ -60,6 +60,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
   Timer? _seekTimer;
   bool? _full;
   bool _visible = true;
+  int? _shownIndex;
   bool _selecting = false;
 
   /// 竖屏选集面板：0 收起（视频居中 + 底部选集条），1 展开（视频到顶 + 面板）
@@ -113,7 +114,8 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     if (full == _full) return;
     _full = full;
     _panel = null;
-    _visible = true;
+    // 竖持时控件默认藏着（点一下才出来）；全屏保持原样：先显示，3 秒后自动藏
+    _visible = full;
     _scheduleHide();
     unawaited(
       SystemChrome.setEnabledSystemUIMode(
@@ -161,6 +163,14 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
       _session.setForeground(playerVisible(state));
 
   void _bind() {
+    // 竖持时换集（上下滑、点选集）不把控件带出来，新的一集照样是干净的画面
+    if (_shownIndex != _session.index) {
+      _shownIndex = _session.index;
+      if (_tapOnly) {
+        _hideTimer?.cancel();
+        _visible = false;
+      }
+    }
     final player = _session.player;
     if (identical(player, _bound)) {
       _refresh();
@@ -212,13 +222,20 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     _seekValue = null;
   }
 
-  bool get _pinned =>
-      _session.paused || !_session.ready || _dragging || _panel != null;
+  /// 竖着拿看横屏剧（非全屏）：控件只认「点一下出来、再点一下藏起」，
+  /// 加载中、暂停时也不强制显示。全屏时保持原来的行为
+  bool get _tapOnly => _full != true;
+
+  bool get _pinned => _tapOnly
+      ? _dragging || _panel != null
+      : _session.paused || !_session.ready || _dragging || _panel != null;
 
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted || _pinned || !_visible) return;
+      // 竖持时暂停状态下点出来的控件不自动藏，等用户再点一下
+      if (_tapOnly && _session.paused) return;
       setState(() => _visible = false);
     });
   }
@@ -545,6 +562,30 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
         FadePresence(
           scaleFrom: .9,
           child: _streak != 0 ? _streakBadge(full) : null,
+        ),
+        // 竖持时暂停了、控件又藏着：中间留个小标记，免得看着像卡住了
+        FadePresence(
+          duration: Motion.medium,
+          child: !full && !visible && session.ready && session.paused
+              ? const IgnorePointer(
+                  child: Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color(0x66000000),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Icon(
+                          Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 34,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : null,
         ),
         IgnorePointer(
           ignoring: !visible,
@@ -1331,11 +1372,13 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
                 children: [
                   // 收起时视频上下的空白处：长按打开「播放设置」（倍速、画质等），
                   // 不用再去点视频右上角的设置；长按视频本身仍是 2 倍速
+                  // 点一下空白处：和点视频一样，显示/藏起播放控件
                   Positioned.fill(
                     child: IgnorePointer(
                       ignoring: t > .02,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
+                        onTap: _toggleControls,
                         onLongPress: () {
                           unawaited(HapticFeedback.selectionClick());
                           unawaited(_openSettings());
