@@ -598,7 +598,9 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
             ),
           ),
         ),
-        if (full && !visible)
+        // 控件藏起来时视频底边留一条细进度线：全屏一直有，竖持现在控件默认藏着，
+        // 也得留着，不然上下滑切集时完全没有进度可看
+        if (!visible)
           Positioned(
             left: 0,
             right: 0,
