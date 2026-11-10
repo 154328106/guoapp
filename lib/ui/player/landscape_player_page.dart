@@ -1388,12 +1388,14 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
                       ),
                     ),
                   ),
+                  // 标题条常显返回键（跟竖屏短剧一样）；面板展开、标题淡出后不响应
                   Positioned(
-                    left: 16,
+                    left: 4,
                     right: 16,
                     top: padding.top,
                     height: titleHeight,
                     child: IgnorePointer(
+                      ignoring: t > .02,
                       child: Opacity(
                         opacity: (1 - t * 2).clamp(0.0, 1.0),
                         child: _titleBar(),
@@ -1439,23 +1441,40 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
   Widget _titleBar() {
     final session = _session;
     return Row(
+      spacing: 2,
       children: [
-        Flexible(
-          child: Text(
-            session.detail.drama.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
+        IconButton(
+          onPressed: () => unawaited(Navigator.maybePop(context)),
+          icon: const Icon(Icons.arrow_back_rounded),
+          color: Colors.white,
+          tooltip: '返回',
+          style: IconButton.styleFrom(fixedSize: const Size.square(48)),
+        ),
+        // 文字不拦点击：点标题一带照旧是显示/藏起播放控件
+        Expanded(
+          child: IgnorePointer(
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    session.detail.drama.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '第 ${session.index + 1} 集',
+                  style: const TextStyle(color: Colors.white60, fontSize: 14),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '第 ${session.index + 1} 集',
-          style: const TextStyle(color: Colors.white60, fontSize: 14),
         ),
       ],
     );
