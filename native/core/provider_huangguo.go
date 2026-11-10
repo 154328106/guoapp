@@ -37,33 +37,43 @@ const (
 )
 
 var (
-	huangguoAIBaseURL     = "https://huangguoai.com"
-	huangguoAIBaseMirrors = []string{"https://huangguoai.com", "https://ttvoij.ediayikma.cc", "https://thu.ediayikma.cc", "https://pku.ediayikma.cc", "https://fdu.ediayikma.cc", "https://thu.agdkczeyx.cc"}
-	huangguoVideoBaseURL  = "https://huangguo.video"
+	huangguoAIBaseURL = "https://huangguoai.com"
+	// 2026-11：旧 *.ediayikma.cc 全部 301 到 *.adihsppe.cc，huangguoai.com 国内直连不通（实测旧 6 个全超时）。
+	// 按 2026-11-10 国内直连实测的速度排序；huangguoai.com 留在最后给海外 / 代理用户。
+	// 运行时还会从站点的发布页 /go-home/ 抓最新镜像（refreshHuangguoAIMirrors）。
+	// 只有 *.adihsppe.cc 是完整镜像；huangguoai.me/.ai/.io、hgai12/13.com 只是发布页，接口一律 404，别放进来。
+	huangguoAIBaseMirrors = []string{
+		"https://00b4b.adihsppe.cc", "https://mzofzp.adihsppe.cc", "https://t9xip.adihsppe.cc", "https://rpb7bz.adihsppe.cc",
+		"https://brma.adihsppe.cc", "https://v2tg.adihsppe.cc", "https://bsl8m.adihsppe.cc", "https://efny9.adihsppe.cc",
+		"https://huangguoai.com",
+	}
+	huangguoAIWildcardDomain = "adihsppe.cc" // 泛解析：随机子域也能打开
+	huangguoVideoBaseURL     = "https://huangguo.video"
 
 	huangguoAISlugs     = []string{"recommend", "newest", "ai-duanju", "ai-manju", "ai-huanlian", "ai-mogai", "ranks/hot"}
 	huangguoAITypeNames = map[string]string{"recommend": "精选推荐", "newest": "最近上新", "ai-duanju": "AI成人短剧", "ai-manju": "AI成人漫剧", "ai-huanlian": "AI换脸", "ai-mogai": "AI魔改", "ranks/hot": "排行榜"}
 
-	reDetailHref      = regexp.MustCompile(`(?is)<a\b[^>]*href=["']([^"']*/detail/([^"'/?#]+)[^"']*)["'][^>]*>.*?</a>`)
-	reDramaCardStart  = regexp.MustCompile(`(?is)<div\b[^>]*class=["'][^"']*\bhg-drama-card\b[^"']*["'][^>]*>`)
-	reVideoCard       = regexp.MustCompile(`(?is)<article\b[^>]*class=["'][^"']*\bvideo-card\b[^"']*["'][^>]*>.*?</article>`)
-	reVideoCardMeta   = regexp.MustCompile(`(?is)<p\b[^>]*class=["'][^"']*\bfont-mono-meta\b[^"']*["'][^>]*>(.*?)</p>`)
-	reVideoDetailMeta = regexp.MustCompile(`(?is)</h1>.*?<p\b[^>]*class=["'][^"']*\bfont-mono-meta\b[^"']*["'][^>]*>(.*?)</p>`)
-	reAnyArticle      = regexp.MustCompile(`(?is)<article\b[^>]*>.*?</article>`)
-	reHuangguoLink    = regexp.MustCompile(`(?is)<a\b[^>]*href=["']([^"']*/(?:series|video)/([^"'/?#]+)[^"']*)["'][^>]*>.*?</a>`)
-	reAIEpisodeLink   = regexp.MustCompile(`(?is)<a\b[^>]*href=["']([^"']*/video/[^"']+)["'][^>]*>.*?</a>`)
-	reTitleTag        = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
-	reH1Tag           = regexp.MustCompile(`(?is)<h1[^>]*>(.*?)</h1>`)
-	reDescMeta        = regexp.MustCompile(`(?is)<meta\b[^>]*(?:name|property)=["'](?:description|og:description)["'][^>]*content=["']([^"']+)["'][^>]*>`)
-	reEpisodeNumber   = regexp.MustCompile(`(?i)(?:第\s*0*(\d+)\s*(?:集|话|期)|(?:更新至|共|全)\s*0*(\d+)\s*(?:集|话|期)|(?:episode|ep)\s*#?\s*0*(\d+))`)
-	reResolution      = regexp.MustCompile(`(?i)RESOLUTION\s*=\s*(\d+)x(\d+)`)
-	reBandwidth       = regexp.MustCompile(`(?i)(?:AVERAGE-)?BANDWIDTH\s*=\s*(\d+)`)
-	reDataHLS         = regexp.MustCompile(`(?is)data-hls=["']([^"']+)["']`)
-	reDataPlaySrc     = regexp.MustCompile(`(?is)data-play-src=["']([^"']+)["']`)
-	reMediaFieldValue = regexp.MustCompile(`(?is)["']?(?:videoSrc|videoUrl|playUrl|src|url)["']?\s*[:=]\s*["']([^"']+\.(?:m3u8|mp4)(?:[^"']*)?)["']`)
-	reDateText        = regexp.MustCompile(`\d{4}-\d{1,2}-\d{1,2}`)
-	reViewsText       = regexp.MustCompile(`(?i)[0-9]+(?:\.[0-9]+)?\s*[w万]?\s*次播放`)
-	reScoreText       = regexp.MustCompile(`[0-9]+(?:\.[0-9]+)?\s*分`)
+	reDetailHref         = regexp.MustCompile(`(?is)<a\b[^>]*href=["']([^"']*/detail/([^"'/?#]+)[^"']*)["'][^>]*>.*?</a>`)
+	reDramaCardStart     = regexp.MustCompile(`(?is)<div\b[^>]*class=["'][^"']*\bhg-drama-card\b[^"']*["'][^>]*>`)
+	reVideoCard          = regexp.MustCompile(`(?is)<article\b[^>]*class=["'][^"']*\bvideo-card\b[^"']*["'][^>]*>.*?</article>`)
+	reVideoCardMeta      = regexp.MustCompile(`(?is)<p\b[^>]*class=["'][^"']*\bfont-mono-meta\b[^"']*["'][^>]*>(.*?)</p>`)
+	reVideoDetailMeta    = regexp.MustCompile(`(?is)</h1>.*?<p\b[^>]*class=["'][^"']*\bfont-mono-meta\b[^"']*["'][^>]*>(.*?)</p>`)
+	reAnyArticle         = regexp.MustCompile(`(?is)<article\b[^>]*>.*?</article>`)
+	reHuangguoLink       = regexp.MustCompile(`(?is)<a\b[^>]*href=["']([^"']*/(?:series|video)/([^"'/?#]+)[^"']*)["'][^>]*>.*?</a>`)
+	reAIEpisodeLink      = regexp.MustCompile(`(?is)<a\b[^>]*href=["']([^"']*/video/[^"']+)["'][^>]*>.*?</a>`)
+	reAIEpisodeKeyNumber = regexp.MustCompile(`(?i)^ep-0*(\d+)$`)
+	reTitleTag           = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
+	reH1Tag              = regexp.MustCompile(`(?is)<h1[^>]*>(.*?)</h1>`)
+	reDescMeta           = regexp.MustCompile(`(?is)<meta\b[^>]*(?:name|property)=["'](?:description|og:description)["'][^>]*content=["']([^"']+)["'][^>]*>`)
+	reEpisodeNumber      = regexp.MustCompile(`(?i)(?:第\s*0*(\d+)\s*(?:集|话|期)|(?:更新至|共|全)\s*0*(\d+)\s*(?:集|话|期)|(?:episode|ep)\s*#?\s*0*(\d+))`)
+	reResolution         = regexp.MustCompile(`(?i)RESOLUTION\s*=\s*(\d+)x(\d+)`)
+	reBandwidth          = regexp.MustCompile(`(?i)(?:AVERAGE-)?BANDWIDTH\s*=\s*(\d+)`)
+	reDataHLS            = regexp.MustCompile(`(?is)data-hls=["']([^"']+)["']`)
+	reDataPlaySrc        = regexp.MustCompile(`(?is)data-play-src=["']([^"']+)["']`)
+	reMediaFieldValue    = regexp.MustCompile(`(?is)["']?(?:videoSrc|videoUrl|playUrl|src|url)["']?\s*[:=]\s*["']([^"']+\.(?:m3u8|mp4)(?:[^"']*)?)["']`)
+	reDateText           = regexp.MustCompile(`\d{4}-\d{1,2}-\d{1,2}`)
+	reViewsText          = regexp.MustCompile(`(?i)[0-9]+(?:\.[0-9]+)?\s*[w万]?\s*次播放`)
+	reScoreText          = regexp.MustCompile(`[0-9]+(?:\.[0-9]+)?\s*分`)
 )
 
 type providerEpisode struct {
@@ -260,12 +270,17 @@ func (d *Downloader) fetchHuangguoAIDetail(ctx context.Context, sourceID string)
 	if sourceID == "" {
 		return Drama{}, nil, fmt.Errorf("empty huangguoai sourceID")
 	}
-	detailURL := strings.TrimRight(huangguoAIBaseURL, "/") + "/detail/" + url.PathEscape(sourceID) + "/"
+	// 新版站点 /detail/<id>/ 会 301 到 /video/<id>/（第 1 集播放页，带完整选集），直接请求省一跳
+	detailURL := strings.TrimRight(huangguoAIBaseURL, "/") + "/video/" + url.PathEscape(sourceID) + "/"
 	body, err := d.fetchProviderText(ctx, detailURL, huangguoAIBaseURL+"/")
 	if err != nil {
 		return Drama{}, nil, err
 	}
 	drama := huangguoDetailMetadata(body, detailURL, sourceHuangguoAI, sourceID)
+	// 现在拿的是第 1 集播放页，<title> 带「第1集」；videoInitialData 里的 title 是干净的剧名
+	if clean := aiInitialDataTitle(body); clean != "" {
+		drama.Title, drama.Name = clean, clean
+	}
 	title := drama.DisplayTitle()
 	episodes := parseHuangguoAIEpisodes(body, detailURL, sourceID)
 	if len(episodes) == 0 {
@@ -360,6 +375,9 @@ func (d *Downloader) fetchProviderText(ctx context.Context, rawURL, referer stri
 	if referer == "" {
 		referer = rawURL
 	}
+	if providerSourceForURL(rawURL) == sourceHuangguoAI {
+		loadHuangguoAIMirrors(d.cfg.dataDir)
+	}
 	candidates := d.providerURLCandidates(rawURL)
 	var lastErr error
 	tried := 0
@@ -439,6 +457,9 @@ func (d *Downloader) fetchProviderText(ctx context.Context, rawURL, referer stri
 				d.providerMu.Lock()
 				d.providerHosts[source] = effectiveURL.Scheme + "://" + effectiveURL.Host
 				d.providerMu.Unlock()
+				if source == sourceHuangguoAI {
+					d.maybeRefreshHuangguoAIMirrors(effectiveURL.Scheme + "://" + effectiveURL.Host)
+				}
 			}
 			rememberPlaybackResponseURL(ctx, rawURL, resp)
 			return string(body), nil
@@ -455,7 +476,7 @@ func providerURLCandidates(rawURL string) []string {
 	if err != nil || u.Hostname() != "huangguoai.com" {
 		return []string{rawURL}
 	}
-	out := make([]string, 0, len(huangguoAIBaseMirrors)+8)
+	out := make([]string, 0, len(huangguoAIBaseMirrors)+16)
 	seen := map[string]bool{}
 	add := func(candidate string) {
 		if candidate == "" || seen[candidate] {
@@ -464,13 +485,15 @@ func providerURLCandidates(rawURL string) []string {
 		seen[candidate] = true
 		out = append(out, candidate)
 	}
-	for i, mirror := range huangguoAIBaseMirrors {
-		if i == 1 {
-			for _, generated := range generatedHuangguoAIMirrors(rawURL, 8) {
-				add(rehostProviderURL(u, generated))
-			}
-		}
+	// 顺序：内置镜像 → 发布页发现的镜像 → 3 个泛解析随机子域兜底（偶尔有不通的，放最后）
+	for _, mirror := range huangguoAIBaseMirrors {
 		add(rehostProviderURL(u, mirror))
+	}
+	for _, mirror := range discoveredHuangguoAIMirrors() {
+		add(rehostProviderURL(u, mirror))
+	}
+	for _, generated := range generatedHuangguoAIMirrors(rawURL, 3) {
+		add(rehostProviderURL(u, generated))
 	}
 	if len(out) == 0 {
 		return []string{rawURL}
@@ -509,7 +532,7 @@ func generatedHuangguoAIMirrors(seed string, n int) []string {
 			continue
 		}
 		seen[sub] = true
-		out = append(out, "https://"+sub+".ediayikma.cc")
+		out = append(out, "https://"+sub+"."+huangguoAIWildcardDomain)
 	}
 	return out
 }
@@ -784,6 +807,14 @@ func parseHuangguoAIEpisodes(rawHTML, pageURL, sourceID string) []providerEpisod
 		if !own {
 			continue
 		}
+		// 2026-11 新版站点：选集链接是 /video/<id>/ep-N/，文字里没有「第N集」；
+		// 不带 ep-N 的 /video/<id>/ 就是第 1 集。集号优先取链接里的。
+		idx := 0
+		if m := reAIEpisodeKeyNumber.FindStringSubmatch(key); len(m) > 1 {
+			idx, _ = strconv.Atoi(m[1])
+		} else if key == "" {
+			idx = 1
+		}
 		if key == "" {
 			key = fmt.Sprintf("auto-%d", len(episodes)+1)
 		}
@@ -792,7 +823,9 @@ func parseHuangguoAIEpisodes(rawHTML, pageURL, sourceID string) []providerEpisod
 		}
 		seen[key] = true
 		seen[fullURL] = true
-		idx := episodeIndex(title, 0)
+		if idx <= 0 {
+			idx = episodeIndex(title, 0)
+		}
 		if idx <= 0 {
 			idx = len(episodes) + 1
 		}
@@ -1282,6 +1315,10 @@ func extractClosestAttr(raw string, start, end int, names ...string) string {
 func titleNearDetail(raw, sourceID string) string {
 	needle := "/detail/" + sourceID
 	idx := strings.Index(raw, needle)
+	if idx < 0 { // 2026-11 新版卡片链接是 /video/<id>/
+		needle = "/video/" + sourceID + "/"
+		idx = strings.Index(raw, needle)
+	}
 	if idx < 0 {
 		return ""
 	}

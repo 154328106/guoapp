@@ -58,7 +58,7 @@ func providerSourceForURL(raw string) string {
 	}
 	host := strings.ToLower(parsed.Hostname())
 	switch {
-	case host == "huangguoai.com" || strings.HasSuffix(host, ".ediayikma.cc") || strings.HasSuffix(host, ".agdkczeyx.cc"):
+	case isHuangguoAIHost(host):
 		return sourceHuangguoAI
 	case host == "huangguo.video":
 		return sourceHuangguoVideo
@@ -105,7 +105,11 @@ func (d *Downloader) providerURLCandidates(raw string) []string {
 	}
 	add(rehostProviderURL(parsed, preferred))
 	configured := d.providerBaseURL(source)
-	add(rehostProviderURL(parsed, configured))
+	// 黄果 AI 的默认地址 huangguoai.com 国内直连不通，没被手动改过时别排在内置镜像前面
+	// （它在 huangguoAIBaseMirrors 末尾，海外 / 代理用户照样能轮到）
+	if !(source == sourceHuangguoAI && strings.TrimRight(configured, "/") == huangguoAIBaseURL) {
+		add(rehostProviderURL(parsed, configured))
+	}
 	if providerSourceForURL(configured) == "" {
 		return candidates
 	}
@@ -180,7 +184,19 @@ func (d *Downloader) resolveProviderMedia(ctx context.Context, task Task) (provi
 			media.Referer = client.host + "/home"
 		}
 	}
-	if chapter.PageURL != "" && (chapter.Source == sourceHuangguoAI || chapter.Source == sourceHuangguoVideo) {
+	if chapter.PageURL != "" && chapter.Source == sourceHuangguoAI {
+		// 2026-11-09 改版后播放页不再带地址，先走取流接口；失败再退回解析页面（老站点 / 接口变动时兜底）
+		if id, ep, ok := huangguoAIPageEpisode(chapter.PageURL); ok {
+			if main, referer, err := d.fetchHuangguoAIPlayback(ctx, id, ep); err == nil {
+				media.URL, media.Referer = main, referer
+			} else {
+				d.recordDiagnostic(diagnosticEvent{Event: "huangguoai.playback_api_failed", Level: "warn", Source: sourceHuangguoAI,
+					DramaID: task.DramaID, Message: "取流接口失败，改为解析页面：" + err.Error()})
+			}
+		}
+	}
+	if chapter.PageURL != "" && media.URL == "" && (chapter.Source == sourceHuangguoAI || chapter.Source == sourceHuangguoVideo) ||
+		chapter.PageURL != "" && chapter.Source == sourceHuangguoVideo {
 		responses := &playbackResponseURLs{}
 		pageContext := context.WithValue(ctx, playbackResponseURLsKey{}, responses)
 		body, err := d.fetchProviderText(pageContext, chapter.PageURL, media.Referer)
