@@ -15,7 +15,6 @@ import '../explore/source_actions.dart';
 import '../follow/follow_page.dart';
 import '../mine/mine_page.dart';
 import '../search/search_page.dart';
-import '../update_prompt.dart';
 import '../widgets/bar_button.dart';
 import '../theme/motion.dart';
 import '../widgets/focus_ring.dart';
@@ -80,9 +79,6 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     FocusManager.instance.addListener(_followFocus);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) runStartupChecks(context, widget.store);
-    });
   }
 
   @override

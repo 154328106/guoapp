@@ -1,8 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_build.dart';
 import '../../app_device.dart';
@@ -12,7 +10,6 @@ import '../../playback_preferences.dart';
 import '../../resource_settings.dart';
 import '../../resource_settings_editor.dart';
 import '../app_scope.dart';
-import '../update_prompt.dart';
 import '../users/users_view.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
@@ -50,16 +47,6 @@ const _decoders = {
   TelevisionDecoder.hardware: '硬解（兼容）',
   TelevisionDecoder.software: '软解（兼容）',
 };
-const _links = [
-  [
-    ('GitHub · 重建版', 'https://github.com/Xanerix/guoapp'),
-    ('GitHub · 原作者', 'https://github.com/fish2018'),
-  ],
-  [
-    ('Telegram · 交流群组', 'https://t.me/+c9YKHp7FjSk0MjI1'),
-    ('Telegram · 更新频道', 'https://t.me/+F9NnQSsMfOU3OTdl'),
-  ],
-];
 
 class SettingsSection extends StatelessWidget {
   const SettingsSection({
@@ -378,49 +365,9 @@ class SettingsSection extends StatelessWidget {
             title: appName,
             value: version.isEmpty ? '版本未知' : '版本 $version',
           ),
-          const _UpdateCheckTile(),
-          SwitchTile(
-            title: '启动时检查更新',
-            subtitle: '有新版本时每次启动都会提示，可在提示里忽略此版本',
-            value: store.checkUpdates,
-            onChanged: (value) =>
-                saveSetting(context, () => store.setCheckUpdates(value)),
-          ),
-          SwitchTile(
-            title: '匿名使用统计',
-            subtitle: '启动时发送随机编号、版本号、平台和果子熟了 / 真果鉴，用于统计使用人数',
-            value: store.shareUsage,
-            onChanged: (value) =>
-                saveSetting(context, () => store.setShareUsage(value)),
-          ),
         ],
       ),
-      for (final links in _links)
-        SettingsCard(
-          children: [
-            for (final (title, url) in links)
-              SettingsTile(
-                title: title,
-                subtitle: url.replaceFirst('https://', ''),
-                onTap: () => _openLink(context, url),
-              ),
-          ],
-        ),
     ];
-  }
-
-  Future<void> _openLink(BuildContext context, String url) async {
-    final opened = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    ).catchError((_) => false);
-    if (opened) return;
-    await Clipboard.setData(ClipboardData(text: url));
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('无法打开浏览器，链接已复制')));
-    }
   }
 
   List<Widget> _diagnostics() => [
@@ -435,34 +382,6 @@ class SettingsSection extends StatelessWidget {
     ),
     _BackupCard(store: store),
   ];
-}
-
-class _UpdateCheckTile extends StatefulWidget {
-  const _UpdateCheckTile();
-
-  @override
-  State<_UpdateCheckTile> createState() => _UpdateCheckTileState();
-}
-
-class _UpdateCheckTileState extends State<_UpdateCheckTile> {
-  var _busy = false;
-
-  Future<void> _check() async {
-    setState(() => _busy = true);
-    try {
-      await checkUpdateManually(context);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => SettingsTile(
-    title: '检查更新',
-    value: _busy ? '检查中' : null,
-    enabled: !_busy,
-    onTap: _check,
-  );
 }
 
 class _BackupCard extends StatefulWidget {
