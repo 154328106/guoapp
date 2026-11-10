@@ -129,6 +129,11 @@ func parseHuangguoRanking(body string, board rankingBoard) (rankingPage, error) 
 			}
 			result := rankingPage{Items: make([]rankingItem, 0, len(graph.Items)), TotalPages: 1}
 			seen, previous := map[string]bool{}, 0
+			// 卡片（新版是 hg-rank-item）带封面、简介等；整页只解析一次，标题仍以榜单结构化数据为准
+			cards := map[string]Drama{}
+			for _, card := range parseHuangguoAIDramaCards(body, graph.ID, "") {
+				cards[card.ID] = card
+			}
 			for _, item := range graph.Items {
 				// 2026-11-09 改版后榜单条目是 /video/<id>/，老页面是 /detail/<id>/，两种都认
 				parsed, err := url.Parse(item.URL)
@@ -150,11 +155,9 @@ func parseHuangguoRanking(body string, board rankingBoard) (rankingPage, error) 
 				}
 				seen[id], previous = true, item.Position
 				drama := Drama{ID: providerDramaID(sourceHuangguoAI, id), Source: sourceHuangguoAI, SourceID: id, Title: item.Name, Name: item.Name}
-				for _, card := range parseHuangguoAIDramaCards(body, item.URL, "") {
-					if card.ID == drama.ID {
-						drama = card
-						break
-					}
+				if card, found := cards[drama.ID]; found {
+					card.Title, card.Name = drama.Title, drama.Name
+					drama = card
 				}
 				result.Items = append(result.Items, rankingItem{Rank: item.Position, Drama: drama})
 			}

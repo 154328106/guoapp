@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -75,6 +77,9 @@ func parseHuangguoSortDetail(body, pageURL string, patch Drama) (Drama, error) {
 			}
 		}
 	}
+	if real := huangguoLazyCover(body, nativeNormalize(patch).Cover, pageURL); real != "" {
+		patch.Cover, patch.CoverURL = real, real
+	}
 	markup := huangguoNonContent.ReplaceAllString(body, "")
 	metaBlock := huangguoClassBlock(markup, "hg-web-detail__meta")
 	meta := cleanText(metaBlock)
@@ -106,4 +111,24 @@ func huangguoDetailMetadata(body, pageURL, source, sourceID string) Drama {
 		}
 	}
 	return drama
+}
+
+var huangguoDataSrc = regexp.MustCompile(`(?i)\bdata-src=["']([^"']+)["']`)
+
+// 黄果 AI 2026-11 改版后，JSON-LD / og:image / poster 写的封面是 expose.eisees.com 的空壳（回 200 但 0 字节），
+// 页面里懒加载 <img data-src> 才是同一路径的真图（pic.drleao.cn，加密图）。找到同路径、不同域名的就换成它。
+func huangguoLazyCover(body, address, pageURL string) string {
+	declared, err := url.Parse(address)
+	if address == "" || err != nil || declared.Path == "" {
+		return ""
+	}
+	for _, match := range huangguoDataSrc.FindAllStringSubmatch(body, -1) {
+		candidate := providerCoverAddress(html.UnescapeString(match[1]), pageURL)
+		parsed, err := url.Parse(candidate)
+		if candidate == "" || err != nil || parsed.Path != declared.Path || strings.EqualFold(parsed.Host, declared.Host) {
+			continue
+		}
+		return candidate
+	}
+	return ""
 }

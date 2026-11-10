@@ -37,6 +37,47 @@ func TestZZLiveHuangguoRankings(t *testing.T) {
 	}
 }
 
+// 黄果封面：榜单 + 首页各取几部，看封面地址在不在、能不能下成图片（GZ_LIVE=1 才跑）
+func TestZZLiveHuangguoCovers(t *testing.T) {
+	if os.Getenv("GZ_LIVE") != "1" {
+		t.Skip("设 GZ_LIVE=1 才跑真实联网测试")
+	}
+	buildAllSources = "true"
+	engine, err := newNativeEngine(t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	var dramas []nativeDrama
+	board, _ := findRankingBoard("huangguo-hot")
+	if page, err := engine.downloader.fetchRankingPage(ctx, board, 1); err == nil {
+		for i, item := range page.Items {
+			if i < 3 {
+				dramas = append(dramas, nativeNormalize(item.Drama))
+			}
+		}
+	} else {
+		t.Errorf("榜单失败：%v", err)
+	}
+	if catalog, err := engine.nativeCatalog(ctx, nativeInput{Source: sourceHuangguo, Page: 1}); err == nil {
+		seen := map[string]bool{}
+		for _, d := range catalog.Items {
+			if !seen[d.Source] {
+				seen[d.Source] = true
+				dramas = append(dramas, d)
+			}
+		}
+	} else {
+		t.Errorf("首页失败：%v", err)
+	}
+	for _, d := range dramas {
+		t0 := time.Now()
+		result, err := engine.loadCover(ctx, d, false)
+		t.Logf("%-14s 《%s》 封面=%.70s → %v %v（%.1fs）", d.Source, d.Title, d.Cover, result, err, time.Since(t0).Seconds())
+	}
+}
+
 func TestZZLiveSourceSmoke(t *testing.T) {
 	if os.Getenv("GZ_LIVE") != "1" {
 		t.Skip("设 GZ_LIVE=1 才跑真实联网测试")

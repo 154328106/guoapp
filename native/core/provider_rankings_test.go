@@ -93,6 +93,35 @@ func TestHuangguoRankingStructuredData(t *testing.T) {
 	if _, err := parseHuangguoRanking(strings.ReplaceAll(modern, "/video/34/", "/other/34/"), board); err == nil {
 		t.Fatal("accepted an unrelated link")
 	}
+	// 新版榜单卡片是 hg-rank-item，封面在懒加载 data-src 上；之前没认出卡片，榜单条目全没封面
+	cards := modern + `<div class="hg-rank-list" data-rank-list><div class="hg-rank-item" data-rank-item data-track-id="12" data-track-title="卡片标题"><span class="hg-rank-num is-top">01</span><a href="/video/12/" class="hg-rank-item__cover"><img src="/static/web/images/cover-placeholder.png" data-src="https://pic.example.cn/upload_01/a.jpg?auth_key=1-0-0-x" alt="卡片标题"></a><div class="hg-rank-item__main"><h2 class="hg-rank-item__title"><a href="/video/12/">卡片标题</a></h2></div></div></div>`
+	result, err = parseHuangguoRanking(cards, board)
+	if err != nil || len(result.Items) != 2 {
+		t.Fatalf("带卡片的新版榜单解析失败：%+v %v", result, err)
+	}
+	first := nativeNormalize(result.Items[0].Drama)
+	if first.Cover != "https://pic.example.cn/upload_01/a.jpg?auth_key=1-0-0-x" || first.Title != "A & B" || nativeNormalize(result.Items[1].Drama).Cover != "" {
+		t.Fatalf("榜单卡片封面没带上，或标题被卡片覆盖：%+v", first)
+	}
+}
+
+func TestHuangguoDetailPrefersLazyCover(t *testing.T) {
+	pageURL := "https://x.adihsppe.cc/video/2833/"
+	decoy := "https://expose.example.com/upload_01/upload/a.jpg?auth=1-abc"
+	body := `<script type="application/ld+json">{"@graph":[{"@type":"VideoObject","@id":"https://huangguoai.io/video/2833/","url":"https://huangguoai.io/video/2833/","name":"剧名","thumbnailUrl":["` + decoy + `"]}]}</script>` +
+		`<img src="data:image/gif;base64,R0lGOD" data-src="https://pic.example.cn/upload_01/other/b.jpg?auth_key=9">` +
+		`<img data-src="https://pic.example.cn/upload_01/upload/a.jpg?auth_key=1794327936-0-0-4de1&amp;x=1">`
+	drama, err := parseHuangguoSortDetail(body, pageURL, Drama{ID: "huangguoai:2833", Source: sourceHuangguoAI, SourceID: "2833"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := nativeNormalize(drama).Cover; got != "https://pic.example.cn/upload_01/upload/a.jpg?auth_key=1794327936-0-0-4de1&x=1" {
+		t.Fatalf("详情封面应换成同路径的懒加载真图，得到 %q", got)
+	}
+	drama, err = parseHuangguoSortDetail(strings.SplitN(body, "<img", 2)[0], pageURL, Drama{ID: "huangguoai:2833", Source: sourceHuangguoAI, SourceID: "2833"})
+	if err != nil || nativeNormalize(drama).Cover != decoy {
+		t.Fatalf("页面没有真图时应保留原地址：%q %v", nativeNormalize(drama).Cover, err)
+	}
 }
 
 type rankingTransport func(*http.Request) (*http.Response, error)
