@@ -1,4 +1,4 @@
-# 果子熟了 / 真果鉴
+# 果子熟了 / 果子黄了
 
 Flutter 多端独立短剧 / 影视应用，手机、平板、电脑和电视分别适配。
 
@@ -7,7 +7,7 @@ Flutter 多端独立短剧 / 影视应用，手机、平板、电脑和电视分
 Telegram：[交流群组](https://t.me/+c9YKHp7FjSk0MjI1) · [更新频道](https://t.me/+F9NnQSsMfOU3OTdl)
 
 - **果子熟了**：只含红果站源。
-- **真果鉴**：含全部站源，可在设置里逐个开关。
+- **果子黄了**：含全部站源，可在设置里逐个开关。
 
 ## 使用
 
@@ -50,14 +50,14 @@ Telegram：[交流群组](https://t.me/+c9YKHp7FjSk0MjI1) · [更新频道](http
 
 ## 安装
 
-在 [Releases](../../releases) 下载对应平台的包，文件名以 `hongguojian-` 开头的是果子熟了，`zhenguojian-` 开头的是真果鉴。
+在 [Releases](../../releases) 下载对应平台的包，文件名以 `hongguojian-` 开头的是果子熟了，`zhenguojian-` 开头的是果子黄了。
 
 | 平台 | 安装包                                                                                    |
 | --- |----------------------------------------------------------------------------------------|
 | Android 7.0+ | arm64-v8a / armeabi-v7a / x86_64 三种 APK，按设备架构选择（大多数手机选 arm64-v8a）；同一签名可覆盖升级，旧证书版本需卸载重装 |
 | Windows 10/11 x64 | 完整 ZIP，解压后运行 `hongguojian.exe` / `zhenguojian.exe`，保留所有 DLL 与 `data` 目录                |
 | iOS 15.1+ | 未签名 IPA，需自行签名或用 iloader 等工具侧载                                                          |
-| macOS 12+ | 通用 dmg（Apple 芯片与 Intel），打开后拖入「应用程序」；未经公证，首次打开前执行 `xattr -dr com.apple.quarantine /Applications/果子熟了.app`（真果鉴为 `真果鉴.app`） |
+| macOS 12+ | 通用 dmg（Apple 芯片与 Intel），打开后拖入「应用程序」；未经公证，首次打开前执行 `xattr -dr com.apple.quarantine /Applications/果子熟了.app`（果子黄了为 `果子黄了.app`） |
 
 安装提示 `INSTALL_FAILED_NO_MATCHING_ABIS` 表示 APK 与设备架构不匹配，请换对应架构的安装包。
 
@@ -65,7 +65,7 @@ Telegram：[交流群组](https://t.me/+c9YKHp7FjSk0MjI1) · [更新频道](http
 
 应用启动时会检查一次新版本，有新版时每次启动都会提示，可在提示里选择忽略此版本或不再提醒。检查更新只读取最新版本号，不发送任何数据。
 
-匿名使用统计是单独的请求，只发送：首次统计时生成的随机编号（与设备、账号无关）、应用版本号、平台（Android / iOS / Windows / macOS）、果子熟了或真果鉴。不发送观看记录、追剧、搜索、站源设置或其他任何个人数据。接收端代码见 [`worker/`](worker)。
+匿名使用统计是单独的请求，只发送：首次统计时生成的随机编号（与设备、账号无关）、应用版本号、平台（Android / iOS / Windows / macOS）、果子熟了或果子黄了。不发送观看记录、追剧、搜索、站源设置或其他任何个人数据。接收端代码见 [`worker/`](worker)。
 
 两项都可以在 **设置 › 关于** 分别关闭，关闭后应用不会再发出对应的请求。
 

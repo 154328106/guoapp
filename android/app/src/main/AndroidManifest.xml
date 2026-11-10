@@ -14,7 +14,7 @@
     <application
         android:label="${appLabel}"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="${appIcon}"
         android:banner="${appBanner}"
         android:usesCleartextTraffic="true"
         android:allowBackup="false">

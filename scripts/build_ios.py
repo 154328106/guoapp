@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from contextlib import contextmanager
 from pathlib import Path
 
 from app_build import BuildVariant, add_variant_argument
@@ -39,6 +40,30 @@ def validate_package(package, prefix):
         corrupt = archive.testzip()
         if corrupt:
             raise SystemExit('iOS 压缩包损坏：' + corrupt)
+
+
+@contextmanager
+def variant_icon(variant):
+    # 果子黄了的图标在 AppIconAllSources；构建期间把它换进 AppIcon（工程只认 AppIcon），结束后还原
+    if not variant.all_sources:
+        yield
+        return
+    catalog = root / 'ios' / 'Runner' / 'Assets.xcassets'
+    icon, source = catalog / 'AppIcon.appiconset', catalog / 'AppIconAllSources.appiconset'
+    if not (source / 'Contents.json').is_file():
+        raise SystemExit('缺少果子黄了图标：先运行 python scripts/generate_brand_assets.py --all-sources')
+    backup = root / 'build' / 'ios-appicon-backup'
+    if backup.exists():
+        shutil.rmtree(backup)
+    shutil.copytree(icon, backup)
+    try:
+        shutil.rmtree(icon)
+        shutil.copytree(source, icon)
+        yield
+    finally:
+        shutil.rmtree(icon, ignore_errors=True)
+        shutil.copytree(backup, icon)
+        shutil.rmtree(backup)
 
 
 def build_core(simulator=False, variant=BuildVariant()):
@@ -91,7 +116,7 @@ def build_core(simulator=False, variant=BuildVariant()):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='构建果子熟了 / 真果鉴 iOS 核心和应用')
+    parser = argparse.ArgumentParser(description='构建果子熟了 / 果子黄了 iOS 核心和应用')
     parser.add_argument('--core-only', action='store_true')
     parser.add_argument('--simulator', action='store_true', help='额外生成模拟器核心；不启动模拟器')
     parser.add_argument('--export-options', type=Path, help='使用自己的 Xcode 签名配置导出 IPA')
@@ -114,13 +139,15 @@ def main():
         config = options.export_options.expanduser().resolve()
         if not config.is_file():
             raise SystemExit('ExportOptions.plist 不存在。')
-        run([flutter, 'build', 'ipa', '--release', '--no-pub', '--export-options-plist', str(config), *variant.flutter_arguments])
+        with variant_icon(variant):
+            run([flutter, 'build', 'ipa', '--release', '--no-pub', '--export-options-plist', str(config), *variant.flutter_arguments])
         for package in (root / 'build' / 'ios' / 'ipa').glob('*.ipa'):
             destination = output / f'{variant.slug}-{version}-ios.ipa'
             shutil.copy2(package, destination)
             artifacts.append(destination)
     else:
-        run([flutter, 'build', 'ios', '--release', '--no-codesign', '--no-pub', *variant.flutter_arguments])
+        with variant_icon(variant):
+            run([flutter, 'build', 'ios', '--release', '--no-codesign', '--no-pub', *variant.flutter_arguments])
         application = root / 'build' / 'ios' / 'iphoneos' / 'Runner.app'
         validate_unsigned_application(application)
         symbols = subprocess.check_output(['xcrun', 'nm', '-gU', str(application / 'Runner')], text=True)

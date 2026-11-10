@@ -40,11 +40,14 @@ android {
 
     defaultConfig {
         applicationId = "com.duanju.duanju_app"
+        // 果子黄了单独包名，和果子熟了能同时装、互不覆盖（果子熟了沿用原包名，已装的数据不丢）
+        if (allSources) applicationIdSuffix = ".guozihuangle"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["appLabel"] = if (allSources) "真果鉴" else "果子熟了"
+        manifestPlaceholders["appLabel"] = if (allSources) "果子黄了" else "果子熟了"
+        manifestPlaceholders["appIcon"] = if (allSources) "@mipmap/ic_launcher_all_sources" else "@mipmap/ic_launcher"
         manifestPlaceholders["appBanner"] = if (allSources) "@drawable/tv_banner_all_sources" else "@drawable/tv_banner"
     }
 
