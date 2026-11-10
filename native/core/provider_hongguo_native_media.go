@@ -24,12 +24,17 @@ func (downloader *Downloader) resolveHongguoAppMedia(ctx context.Context, videoI
 	if err != nil {
 		return providerMedia{}, err
 	}
-	return decodeHongguoAppModel(nestedMap(result, "data"))
+	model, err := hongguoAppModel(nestedMap(result, "data"))
+	if err != nil {
+		return providerMedia{}, err
+	}
+	return downloader.hongguoMediaFromModel(ctx, model)
 }
 
 // resolveHongguoAppMultiMedia 走 App 的批量取流端点 multi_video_model/v1（同一设备身份），
 // 作为 video_model/v1 失败时的第二条官方通道；返回结构与单集端点的 data 一致，按 vid 分组。
-// 2026-11 实测返回明文 main_url + spade_a；个别集可能是 key_seed 加密地址，解析不了就交给后面的通道。
+// 2026-11 实测返回明文 main_url + spade_a；个别集是 key_seed 加密地址或只给 fallback_api，
+// 都在 hongguoMediaFromModel 里处理（provider_hongguo_media_extras.go）。
 func (downloader *Downloader) resolveHongguoAppMultiMedia(ctx context.Context, videoID string) (providerMedia, error) {
 	if !hongguoNumericID.MatchString(videoID) {
 		return providerMedia{}, errors.New("红果视频 ID 无效")
@@ -46,10 +51,23 @@ func (downloader *Downloader) resolveHongguoAppMultiMedia(ctx context.Context, v
 	if len(data) == 0 {
 		return providerMedia{}, errors.New("红果批量取流未返回该集")
 	}
-	return decodeHongguoAppModel(data)
+	model, err := hongguoAppModel(data)
+	if err != nil {
+		return providerMedia{}, err
+	}
+	return downloader.hongguoMediaFromModel(ctx, model)
 }
 
 func decodeHongguoAppModel(data map[string]any) (providerMedia, error) {
+	model, err := hongguoAppModel(data)
+	if err != nil {
+		return providerMedia{}, err
+	}
+	return selectHongguoAppMedia(model)
+}
+
+// hongguoAppModel：从取流接口的 data 里拿出 video_model（可能是对象、JSON 字符串或 base64 的 JSON）。
+func hongguoAppModel(data map[string]any) (map[string]any, error) {
 	model, _ := data["video_model"].(map[string]any)
 	if encoded, ok := data["video_model"].(string); ok && encoded != "" {
 		if decoded, err := decodeHongguoBase64(encoded); err == nil && len(decoded) > 0 {
@@ -58,7 +76,7 @@ func decodeHongguoAppModel(data map[string]any) (providerMedia, error) {
 		decoder := json.NewDecoder(strings.NewReader(encoded))
 		decoder.UseNumber()
 		if err := decoder.Decode(&model); err != nil {
-			return providerMedia{}, errors.New("红果 App 播放信息格式异常")
+			return nil, errors.New("红果 App 播放信息格式异常")
 		}
 	}
 	if len(model) == 0 {
@@ -67,10 +85,14 @@ func decodeHongguoAppModel(data map[string]any) (providerMedia, error) {
 				"video_list":     data["video_list"],
 				"video_duration": data["video_duration"],
 				"duration":       data["duration"],
+				"key_seed":       data["key_seed"],
 			}
 		}
 	}
-	return selectHongguoAppMedia(model)
+	if len(model) > 0 && model["key_seed"] == nil && data["key_seed"] != nil {
+		model["key_seed"] = data["key_seed"]
+	}
+	return model, nil
 }
 
 func selectHongguoAppMedia(model map[string]any) (providerMedia, error) {
@@ -86,6 +108,7 @@ func selectHongguoAppMedia(model map[string]any) (providerMedia, error) {
 		}
 	}
 	duration, _ := strconv.ParseFloat(mapString(model, "video_duration", "duration"), 64)
+	seed := hongguoKeySeed(model)
 	var keyErr error
 	type scoredMedia struct {
 		media providerMedia
@@ -99,7 +122,7 @@ func selectHongguoAppMedia(model map[string]any) (providerMedia, error) {
 		if codec == "bytevc2" || strings.Contains(strings.ToLower(mapString(variant, "gear_des_key")), "bytevc2") {
 			continue
 		}
-		addresses := hongguoMediaAddresses(variant)
+		addresses := hongguoMediaAddressesWithSeed(variant, seed)
 		if len(addresses) == 0 {
 			continue
 		}
@@ -145,6 +168,11 @@ func selectHongguoAppMedia(model map[string]any) (providerMedia, error) {
 }
 
 func hongguoMediaAddresses(info map[string]any) []string {
+	return hongguoMediaAddressesWithSeed(info, nil)
+}
+
+// hongguoMediaAddressesWithSeed：seed 非空时，非明文地址先按 key_seed 解密，解不开再按普通 base64 试。
+func hongguoMediaAddressesWithSeed(info map[string]any, seed []byte) []string {
 	var addresses []string
 	seen := map[string]bool{}
 	var add func(any)
@@ -154,6 +182,11 @@ func hongguoMediaAddresses(info map[string]any) []string {
 			address := strings.TrimSpace(value)
 			if len(address) > 8192 {
 				return
+			}
+			if !isProviderHTTPMediaURL(address) && len(seed) > 0 {
+				if plain, ok := decryptHongguoSpadeURL(address, seed); ok {
+					address = plain
+				}
 			}
 			if !isProviderHTTPMediaURL(address) {
 				decoded, err := decodeHongguoBase64(address)
@@ -172,7 +205,7 @@ func hongguoMediaAddresses(info map[string]any) []string {
 			}
 		}
 	}
-	for _, key := range []string{"main_url", "backup_url", "backup_url_1", "backup_url_2", "backup_urls", "url_list"} {
+	for _, key := range []string{"main_url", "backup_url", "backup_url_1", "backup_url_2", "backup_urls", "backup_url_list", "url_list"} {
 		add(info[key])
 	}
 	return addresses
