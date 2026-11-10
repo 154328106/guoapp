@@ -10,6 +10,33 @@ import (
 	"time"
 )
 
+// 黄果三个榜单（GZ_LIVE=1 才跑）
+func TestZZLiveHuangguoRankings(t *testing.T) {
+	if os.Getenv("GZ_LIVE") != "1" {
+		t.Skip("设 GZ_LIVE=1 才跑真实联网测试")
+	}
+	engine, err := newNativeEngine(t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	for _, id := range []string{"huangguo-hot", "huangguo-recommend", "huangguo-potential"} {
+		board, _ := findRankingBoard(id)
+		t0 := time.Now()
+		page, err := engine.downloader.fetchRankingPage(ctx, board, 1)
+		if err != nil {
+			t.Errorf("%s 失败（%.1fs）：%v", board.Name, time.Since(t0).Seconds(), err)
+			continue
+		}
+		first := ""
+		if len(page.Items) > 0 {
+			first = page.Items[0].Drama.Title
+		}
+		t.Logf("%s %.1fs：%d 部，第 1 名《%s》", board.Name, time.Since(t0).Seconds(), len(page.Items), first)
+	}
+}
+
 func TestZZLiveSourceSmoke(t *testing.T) {
 	if os.Getenv("GZ_LIVE") != "1" {
 		t.Skip("设 GZ_LIVE=1 才跑真实联网测试")

@@ -57,7 +57,8 @@ func (d *Downloader) nativeCoverAddress(ctx context.Context, drama nativeDrama) 
 		}
 		return "", errors.New("详情暂未返回海报地址")
 	case sourceHuangguoAI, sourceHuangguoVideo:
-		route := "/detail/" + url.PathEscape(id) + "/"
+		// 黄果 AI 2026-11-09 改版：详情页是 /video/<id>/（/detail/ 会 301 过去，但页面里写的地址也是 /video/，对不上）
+		route := "/video/" + url.PathEscape(id) + "/"
 		if source == sourceHuangguoAI && !rankingSourceID.MatchString(id) {
 			return "", errors.New("无效的黄果剧集 ID")
 		}

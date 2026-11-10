@@ -84,6 +84,15 @@ func TestHuangguoRankingStructuredData(t *testing.T) {
 	if _, err := parseHuangguoRanking(strings.ReplaceAll(body, "/detail/34/", "/detail/12/"), board); err == nil {
 		t.Fatal("accepted duplicate IDs")
 	}
+	// 2026-11-09 改版：条目链接变成 /video/<id>/，之前只认 /detail/ 导致三个榜全空
+	modern := strings.NewReplacer("/detail/12/", "/video/12/", "/detail/34/", "/video/34/").Replace(body)
+	result, err = parseHuangguoRanking(modern, board)
+	if err != nil || len(result.Items) != 2 || result.Items[1].Drama.ID != "huangguoai:34" {
+		t.Fatalf("新版 /video/ 链接解析失败：%+v %v", result, err)
+	}
+	if _, err := parseHuangguoRanking(strings.ReplaceAll(modern, "/video/34/", "/other/34/"), board); err == nil {
+		t.Fatal("accepted an unrelated link")
+	}
 }
 
 type rankingTransport func(*http.Request) (*http.Response, error)
