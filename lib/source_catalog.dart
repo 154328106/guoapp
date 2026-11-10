@@ -60,7 +60,7 @@ class SourceCatalog {
     try {
       _boards = [
         for (final board in await repository.rankingBoards())
-          if (board.source == source.id) board,
+          if (SourceSite.listingId(board.source) == source.id) board,
       ];
     } catch (_) {}
     _remote = await repository.categories(source.id, force: force);
@@ -74,7 +74,7 @@ class SourceCatalog {
 
   void remember(Iterable<Drama> items) {
     for (final drama in items) {
-      if (drama.source != source.id) continue;
+      if (SourceSite.listingId(drama.source) != source.id) continue;
       _library[drama.id] = _library[drama.id]?.merge(drama) ?? drama;
     }
   }

@@ -68,7 +68,7 @@ void main() {
     final repository = NativeRepository()..access = store;
     expect(repository.supportsDownloads, isFalse);
 
-    final denied = drama('2', source: 'huangdou');
+    final denied = drama('2', source: 'huangju');
     for (final request in _requests(repository, denied)) {
       await expectLater(
         request(),

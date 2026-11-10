@@ -51,7 +51,7 @@ class ExploreFeed extends ChangeNotifier {
     final source = this.source;
     if (source == null || _tab.id != tabs.first.id) return null;
     return store.history
-        .where((entry) => entry.drama.source == source.id)
+        .where((entry) => SourceSite.listingId(entry.drama.source) == source.id)
         .firstOrNull;
   }
 

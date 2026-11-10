@@ -138,7 +138,7 @@ class _FollowPageState extends State<FollowPage> {
       final source = sources.any((site) => site.id == _source) ? _source : '';
       final shown = [
         for (final drama in follows)
-          if ((source.isEmpty || drama.source == source) &&
+          if ((source.isEmpty || SourceSite.listingId(drama.source) == source) &&
               matchesFollowTitle(drama, _query.text))
             drama,
       ];

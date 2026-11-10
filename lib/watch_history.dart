@@ -21,7 +21,10 @@ enum WatchPeriod {
 
 List<SourceSite> watchedSources(List<WatchEntry> history) => [
   for (final site in SourceSite.values)
-    if (history.any((entry) => entry.drama.source == site.id)) site,
+    if (history.any(
+      (entry) => SourceSite.listingId(entry.drama.source) == site.id,
+    ))
+      site,
 ];
 
 bool matchesWatchTitle(WatchEntry entry, String query) =>

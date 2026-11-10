@@ -11,27 +11,14 @@ class SourceSite {
   bool get pagedSearch =>
       id == 'hongguo' ||
       id == 'huangju' ||
-      id == 'yeguo' ||
-      id == 'dsd' ||
-      id == 'sorani' ||
       id == 'guipian' ||
       id == 'hanxiaoquan';
   bool get searchSuggestions => id == 'hongguo';
-  String get groupId => switch (id) {
-    'huangguo-video' || 'huangguoai' || 'cloudfront' => 'huangguo',
-    _ => id,
-  };
-  String get groupName => groupId == 'huangguo' ? '黄果' : name;
-  String get entryName => switch (id) {
-    'huangguo-video' => '视频',
-    'huangguoai' => 'AI',
-    'cloudfront' => '旧版',
-    _ => name,
-  };
+  String get groupId => listingId(id);
+  String get groupName => byId(groupId).name;
+  String get entryName => name;
 
   static const hongguo = SourceSite('hongguo', '红果', '短剧 · 漫剧 · AI 剧');
-  static const dsd = SourceSite('dsd', '帝果', '分类视频 · 在线搜索');
-  static const sorani = SourceSite('sorani', '青空', '番剧 · 剧场动画 · 特摄');
   static const guipian = SourceSite('guipian', '鬼片', '鬼片 · 电视剧 · 动漫');
   static const hanxiaoquan = SourceSite(
     'hanxiaoquan',
@@ -39,24 +26,43 @@ class SourceSite {
     '韩剧 · 韩国电影 · 综艺动漫',
   );
 
-  static const primaryValues = [hongguo, hanxiaoquan, guipian, sorani];
+  /// 黄果：视频 / AI / 旧版 三家聚合成一个源（2026-11-10）。
+  static const huangguo = SourceSite('huangguo', '黄果', 'AI 短剧 · 视频剧集 · 原创剧库');
+
+  static const primaryValues = [hongguo, hanxiaoquan, guipian];
 
   static const restrictedValues = [
-    SourceSite('huangdou', '黄豆', '精选短剧'),
     SourceSite('huangju', '剧果', '热门 · 最新 · 分类短剧'),
-    SourceSite('yeguo', '野果', '分类短剧 · 在线搜索'),
-    dsd,
-    SourceSite('huangguo-video', '黄果视频', '视频剧集'),
-    SourceSite('huangguoai', '黄果 AI', 'AI 短剧'),
-    SourceSite('cloudfront', '黄果旧版', '旧 API 剧库'),
+    huangguo,
   ];
+
+  /// 黄果的三家：每部剧仍记在原来那家（详情 / 取流靠它），界面上统一算「黄果」，不单独列出。
+  static const huangguoParts = [
+    SourceSite('huangguoai', '黄果', 'AI 短剧'),
+    SourceSite('huangguo-video', '黄果', '视频剧集'),
+    SourceSite('cloudfront', '黄果', '旧 API 剧库'),
+  ];
+
+  /// 2026-11-10 删掉的源（青空 / 黄豆 / 野果 / 帝果）：旧数据里还会出现，认得但不再提供。
+  static const removedIds = {'sorani', 'huangdou', 'yeguo', 'dsd'};
+
   static const knownValues = [...primaryValues, ...restrictedValues];
-  static const allValues = [...primaryValues, ...restrictedValues];
+  static const allValues = [
+    ...primaryValues,
+    ...restrictedValues,
+    ...huangguoParts,
+  ];
   static const values = allSourcesEnabled ? knownValues : [hongguo];
-  static bool isAvailable(String id) => values.any((site) => site.id == id);
-  static bool isKnown(String id) => allValues.any((site) => site.id == id);
+
+  /// 列表里归到哪个源：黄果三家 → huangguo，其余原样。
+  static String listingId(String id) =>
+      huangguoParts.any((site) => site.id == id) ? huangguo.id : id;
+  static bool isAvailable(String id) =>
+      values.any((site) => site.id == listingId(id));
+  static bool isKnown(String id) =>
+      allValues.any((site) => site.id == id) || removedIds.contains(id);
   static bool isRestricted(String id) =>
-      restrictedValues.any((site) => site.id == id);
+      restrictedValues.any((site) => site.id == listingId(id));
   static SourceSite byId(String id) =>
       allValues.firstWhere((site) => site.id == id, orElse: () => hongguo);
 }
@@ -144,9 +150,7 @@ class Drama {
     category: json['category'] as String? ?? '',
     vip: json['vip'] == true
         ? true
-        : json['vip'] == false &&
-              (json['source'] != 'huangdou' ||
-                  intValue(json['metadataSchema']) >= 1)
+        : json['vip'] == false
         ? false
         : null,
     heat: json['heat']?.toString() ?? '',

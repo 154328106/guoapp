@@ -300,7 +300,6 @@ class _DetailPageState extends State<DetailPage> {
     final details = _details!;
     final episode = details.episodes[index];
     if (episode.vip &&
-        details.drama.source != SourceSite.dsd.id &&
         await showDialog<bool>(
               context: context,
               builder: (context) => AlertDialog(
@@ -1113,15 +1112,6 @@ class _DetailPageState extends State<DetailPage> {
         ),
         Text(meta.join(' · '), style: sub(m.meta)),
         if (drama.category.isNotEmpty) Text(drama.category, style: sub(m.meta)),
-        if (drama.source == 'huangdou')
-          Text(
-            drama.vipStatus == null
-                ? 'VIP 状态待补齐'
-                : drama.vip
-                ? 'VIP 内容'
-                : '免费内容',
-            style: sub(m.tag),
-          ),
         ...trailing,
       ],
     );

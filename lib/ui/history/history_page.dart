@@ -133,7 +133,8 @@ class _HistoryPageState extends State<HistoryPage> {
       final source = sources.any((site) => site.id == _source) ? _source : '';
       final shown = [
         for (final entry in history)
-          if ((source.isEmpty || entry.drama.source == source) &&
+          if ((source.isEmpty ||
+                  SourceSite.listingId(entry.drama.source) == source) &&
               matchesWatchTitle(entry, _query.text))
             entry,
       ];

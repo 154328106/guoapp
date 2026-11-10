@@ -143,7 +143,8 @@ class _DownloadsPageState extends State<DownloadsPage>
       final source = sources.any((site) => site.id == _sources[index])
           ? _sources[index]
           : '';
-      bool shown(Drama drama) => source.isEmpty || drama.source == source;
+      bool shown(Drama drama) =>
+          source.isEmpty || SourceSite.listingId(drama.source) == source;
       final pending = [
         for (final job in pendingDownloads(jobs))
           if (shown(job.drama)) job,

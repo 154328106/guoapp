@@ -133,7 +133,7 @@ void main() {
       expect(
         store.sources.map((site) => site.id),
         allSourcesEnabled
-            ? ['hongguo', 'hanxiaoquan', 'guipian', 'sorani']
+            ? ['hongguo', 'hanxiaoquan', 'guipian']
             : ['hongguo'],
       );
       for (final site in SourceSite.restrictedValues) {
@@ -146,21 +146,23 @@ void main() {
       final store = await openStore();
       await store.setSourceEnabled('hongguo', false);
       if (allSourcesEnabled) {
-        await store.setSourceEnabled('dsd', true);
+        await store.setSourceEnabled('huangguo', true);
       } else {
         await expectLater(
-          store.setSourceEnabled('dsd', true),
+          store.setSourceEnabled('huangguo', true),
           throwsStateError,
         );
       }
 
       final restarted = await restartStore(store);
       expect(restarted.allowsSource('hongguo'), isFalse);
-      expect(restarted.allowsSource('dsd'), allSourcesEnabled);
+      expect(restarted.allowsSource('huangguo'), allSourcesEnabled);
+      // 黄果三家共用「黄果」的开关和权限
+      expect(restarted.allowsSource('huangguoai'), allSourcesEnabled);
       expect(restarted.source, allSourcesEnabled ? 'hanxiaoquan' : '');
     });
 
-    for (final source in ['huangdou', 'dsd']) {
+    for (final source in ['huangju', 'huangguo']) {
       test('a restored $source user keeps identity across editions', () async {
         final store = await openStore({
           ..._viewer([source]),
@@ -175,6 +177,39 @@ void main() {
         expect(store.source, allSourcesEnabled ? source : '');
       });
     }
+
+    // 2026-11-10 删掉了 青空 / 黄豆 / 野果 / 帝果：旧用户资料仍然有效，只是这些源不再提供
+    for (final source in ['sorani', 'huangdou', 'yeguo', 'dsd']) {
+      test('a restored $source user keeps identity after removal', () async {
+        final store = await openStore({
+          ..._viewer([source]),
+          'sourceSwitches': jsonEncode({source: true}),
+          'profile.viewer.source': source,
+        });
+        expect(store.configurationError, isNull);
+        expect(store.profile.id, 'viewer');
+        expect(store.profile.sources, [source]);
+        expect(store.allowsSource(source), isFalse);
+        expect(store.sourceEnabled(source), isFalse);
+        expect(store.source, '');
+      });
+    }
+
+    // 以前给的是黄果三家里某一家的权限 / 开关 / 选中，现在都落到「黄果」
+    for (final part in ['huangguoai', 'huangguo-video', 'cloudfront']) {
+      test('a $part user moves to the merged huangguo source', () async {
+        final store = await openStore({
+          ..._viewer([part]),
+          'sourceSwitches': jsonEncode({part: true}),
+          'profile.viewer.source': part,
+        });
+        expect(store.configurationError, isNull);
+        expect(store.sourceEnabled('huangguo'), isTrue);
+        expect(store.allowsSource('huangguo'), allSourcesEnabled);
+        expect(store.allowsSource(part), allSourcesEnabled);
+        expect(store.source, allSourcesEnabled ? 'huangguo' : '');
+      });
+    }
   });
 
   test('build edition names match the source list', () {
@@ -183,10 +218,14 @@ void main() {
     expect(
       SourceSite.values.map((site) => site.id),
       allSourcesEnabled
-          ? SourceSite.allValues.map((site) => site.id)
+          ? SourceSite.knownValues.map((site) => site.id)
           : ['hongguo'],
     );
     expect(SourceSite.isKnown('dsd'), isTrue);
-    expect(SourceSite.isAvailable('dsd'), allSourcesEnabled);
+    expect(SourceSite.isAvailable('dsd'), isFalse);
+    expect(SourceSite.isKnown('huangguoai'), isTrue);
+    expect(SourceSite.isAvailable('huangguoai'), allSourcesEnabled);
+    expect(SourceSite.listingId('cloudfront'), 'huangguo');
+    expect(SourceSite.byId('huangguo-video').name, '黄果');
   });
 }

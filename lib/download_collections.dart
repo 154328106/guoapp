@@ -85,7 +85,8 @@ List<DownloadedDrama> downloadedDramas(Iterable<DownloadJob> jobs) {
 
 List<SourceSite> downloadSources(Iterable<DownloadJob> jobs) => [
   for (final site in SourceSite.values)
-    if (jobs.any((job) => job.drama.source == site.id)) site,
+    if (jobs.any((job) => SourceSite.listingId(job.drama.source) == site.id))
+      site,
 ];
 
 ({Set<int> downloaded, Set<int> downloading}) downloadMarks(

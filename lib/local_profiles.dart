@@ -24,7 +24,12 @@ class LocalProfile {
   final String salt;
   final String pinHash;
   bool get protected => salt.isNotEmpty && pinHash.isNotEmpty;
-  bool allows(String source) => admin || sources.contains(source);
+  /// 黄果三家和聚合后的「黄果」互通：以前给的是「黄果 AI」等子源权限，现在照样算有「黄果」，反之亦然。
+  bool allows(String source) {
+    if (admin || sources.contains(source)) return true;
+    final listing = SourceSite.listingId(source);
+    return sources.any((id) => SourceSite.listingId(id) == listing);
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,

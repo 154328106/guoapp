@@ -312,11 +312,23 @@ class LocalStore extends ChangeNotifier {
       if (!locked && profile.allows(site.id)) site,
   ];
 
-  bool sourceEnabled(String source) => switch (_settings['sourceSwitches']) {
-    final Map switches when switches[source] is bool =>
-      switches[source] as bool,
-    _ => !SourceSite.isRestricted(source),
-  };
+  /// 黄果三家共用「黄果」的开关；没设过「黄果」时，沿用以前三家里打开过的那个。
+  bool sourceEnabled(String source) {
+    final listing = SourceSite.listingId(source);
+    if (SourceSite.removedIds.contains(listing)) return false;
+    final switches = _settings['sourceSwitches'];
+    if (switches is Map) {
+      if (switches[listing] is bool) return switches[listing] as bool;
+      if (listing == SourceSite.huangguo.id) {
+        final legacy = [
+          for (final part in SourceSite.huangguoParts)
+            if (switches[part.id] is bool) switches[part.id] as bool,
+        ];
+        if (legacy.isNotEmpty) return legacy.any((on) => on);
+      }
+    }
+    return !SourceSite.isRestricted(listing);
+  }
 
   Future<void> setSourceEnabled(String source, bool enabled) {
     if (!SourceSite.isAvailable(source)) {
@@ -326,7 +338,10 @@ class LocalStore extends ChangeNotifier {
     return _queue(() async {
       _requireAdmin();
       if (epoch != _epoch) throw StateError('当前用户已变更，请重试');
-      final switches = {..._map(_settings['sourceSwitches']), source: enabled};
+      final switches = {
+        ..._map(_settings['sourceSwitches']),
+        SourceSite.listingId(source): enabled,
+      };
       await _saveSettings({..._settings, 'sourceSwitches': switches});
     });
   }
@@ -413,9 +428,11 @@ class LocalStore extends ChangeNotifier {
 
   String get source {
     if (locked) return '';
-    final value = _userSettings['source'];
+    // 以前选的是「黄果 AI」等子源的，现在落到「黄果」；选的是已删的源，回到第一个
+    final raw = _userSettings['source'];
+    final value = raw is String ? SourceSite.listingId(raw) : null;
     return sources.any((site) => site.id == value)
-        ? value as String
+        ? value!
         : sources.firstOrNull?.id ?? '';
   }
 
