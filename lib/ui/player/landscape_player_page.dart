@@ -563,23 +563,34 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
           scaleFrom: .9,
           child: _streak != 0 ? _streakBadge(full) : null,
         ),
-        // 竖持时暂停了、控件又藏着：中间留个小标记，免得看着像卡住了
+        // 竖持时暂停了、控件又藏着：中间留个播放键，点它直接继续播放
+        // （以前是 IgnorePointer 的纯标记，点了只会把控件叫出来，还得再点小播放键）
         FadePresence(
           duration: Motion.medium,
           child: !full && !visible && session.ready && session.paused
-              ? const IgnorePointer(
-                  child: Center(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Color(0x66000000),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Padding(
+              ? Center(
+                  child: Semantics(
+                    button: true,
+                    label: '播放',
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: session.togglePlayback,
+                      // 透明外圈把可点范围放大到 74，手指不用点得太准
+                      child: const Padding(
                         padding: EdgeInsets.all(10),
-                        child: Icon(
-                          Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 34,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Color(0x66000000),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(10),
+                            child: Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 34,
+                            ),
+                          ),
                         ),
                       ),
                     ),
