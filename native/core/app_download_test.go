@@ -394,7 +394,7 @@ func TestNativeDownloadsPauseSourceOnlyPausesThatSource(t *testing.T) {
 	if _, err := manager.enqueue(downloadTestInput(3)); err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.control("huangdou", "pauseSource"); err != nil {
+	if err := manager.control("huangju", "pauseSource"); err != nil {
 		t.Fatal(err)
 	}
 	jobs, err := manager.snapshot()

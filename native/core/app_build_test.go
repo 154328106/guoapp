@@ -11,7 +11,7 @@ import (
 )
 
 func TestNativeBuildAuthorization(t *testing.T) {
-	for _, source := range []string{sourceHongguo, sourceHuangdou, sourceHuangguoVideo, sourceHuangguoAI, sourceCloudFront, sourceDSD, "unknown"} {
+	for _, source := range []string{sourceHongguo, sourceHuangju, sourceHuangguoVideo, sourceHuangguoAI, sourceCloudFront, sourceGuipian, "unknown"} {
 		allowed := source == sourceHongguo || buildAllSources == "true" && source != "unknown"
 		for _, action := range []string{"catalog", "cached", "detail", "followCheck", "cover", "resolve", "enqueueDownloads", "localPlayback"} {
 			input := nativeInput{Action: action, Source: source, Drama: nativeDrama{ID: source + ":123", Source: source}}
@@ -22,9 +22,9 @@ func TestNativeBuildAuthorization(t *testing.T) {
 		}
 	}
 	for _, input := range []nativeInput{
-		{Action: "resolve", Drama: nativeDrama{ID: "huangdou:123", Source: sourceHongguo}},
-		{Action: "resolve", Drama: nativeDrama{ID: "hongguo:123", Source: sourceHongguo}, Chapter: Chapter{Source: sourceHuangdou}},
-		{Action: "resolve", Drama: nativeDrama{ID: "hongguo:123", Source: sourceHongguo}, Chapter: Chapter{ID: "huangdou:123:1"}},
+		{Action: "resolve", Drama: nativeDrama{ID: "huangju:123", Source: sourceHongguo}},
+		{Action: "resolve", Drama: nativeDrama{ID: "hongguo:123", Source: sourceHongguo}, Chapter: Chapter{Source: sourceHuangju}},
+		{Action: "resolve", Drama: nativeDrama{ID: "hongguo:123", Source: sourceHongguo}, Chapter: Chapter{ID: "huangju:123:1"}},
 	} {
 		if !errors.Is(nativeAuthorizeInput(input), errNativeBuildSource) {
 			t.Fatal("mismatched source passed native authorization")
@@ -32,7 +32,7 @@ func TestNativeBuildAuthorization(t *testing.T) {
 	}
 	manager := downloadTestManager(t)
 	input := downloadTestInput(1)
-	input.Entries[0].Chapter.Source = sourceHuangdou
+	input.Entries[0].Chapter.Source = sourceHuangju
 	if _, err := manager.enqueue(input); !errors.Is(err, errNativeBuildSource) {
 		t.Fatalf("mismatched download source accepted: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestNativeBuildAuthorization(t *testing.T) {
 func TestNativeBuildPreservesForeignDownloadRecordsAndRestrictsScheduling(t *testing.T) {
 	manager := downloadTestManager(t)
 	records := []*nativeDownloadRecord{}
-	for index, source := range []string{sourceHongguo, sourceHuangdou, sourceHuangguoVideo, sourceHuangguoAI, sourceCloudFront, sourceDSD} {
+	for index, source := range []string{sourceHongguo, sourceHuangju, sourceHuangguoVideo, sourceHuangguoAI, sourceCloudFront, sourceGuipian} {
 		drama := nativeDrama{ID: source + ":123", Source: source, Title: "合成下载"}
 		record := &nativeDownloadRecord{nativeDownloadJob: nativeDownloadJob{
 			ID: nativeDownloadID(drama.ID, 1), Drama: drama, Index: 1,
@@ -91,7 +91,7 @@ func TestNativeBuildPreservesForeignDownloadRecordsAndRestrictsScheduling(t *tes
 			t.Fatal("allowed download did not start")
 		}
 	}
-	if !seen[sourceHongguo] || buildAllSources == "true" && !seen[sourceHuangdou] {
+	if !seen[sourceHongguo] || buildAllSources == "true" && !seen[sourceHuangju] {
 		t.Fatalf("wrong sources scheduled: %v", seen)
 	}
 	if buildAllSources != "true" {
@@ -130,8 +130,8 @@ func TestNativeBuildPreservesForeignDownloadRecordsAndRestrictsScheduling(t *tes
 		}
 	}
 	if buildAllSources == "true" {
-		if job := reopened.jobs[nativeDownloadID(sourceDSD+":123", 1)]; job == nil {
-			t.Fatal("DSD download was lost during bulk operations")
+		if job := reopened.jobs[nativeDownloadID(sourceGuipian+":123", 1)]; job == nil {
+			t.Fatal("Guipian download was lost during bulk operations")
 		}
 	}
 }

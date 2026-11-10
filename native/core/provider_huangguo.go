@@ -22,13 +22,9 @@ import (
 const (
 	sourceHuangguoAI    = "huangguoai"
 	sourceHuangguoVideo = "huangguo-video"
-	sourceHuangdou      = "huangdou"
 	sourceHongguo       = "hongguo"
 	sourceHuangju       = "huangju"
-	sourceYeguo         = "yeguo"
-	sourceDSD           = "dsd"
 	sourceCloudFront    = "cloudfront"
-	sourceSorani        = "sorani"
 	sourceGuipian       = "guipian"
 	sourceHanxiaoquan   = "hanxiaoquan"
 
@@ -95,15 +91,20 @@ func providerChapterID(source, sourceID, chapterKey string) string {
 func splitProviderDramaID(id string) (source, sourceID string, ok bool) {
 	source, sourceID, ok = strings.Cut(strings.TrimSpace(id), ":")
 	source = canonicalProviderSource(source)
+	if source == sourceHuangguo {
+		// 剧集 ID 里的 "huangguo:" 一直是黄果 AI 的旧别名；聚合源 huangguo 只用于列表，不产生剧集 ID
+		source = sourceHuangguoAI
+	}
 	if !ok || strings.TrimSpace(sourceID) == "" || !isHuangguoProviderSource(source) {
 		return "", "", false
 	}
 	return source, strings.TrimSpace(sourceID), true
 }
 
+// isHuangguoProviderSource：本 App 认识的站源（2026-11-10 起去掉了 青空 / 黄豆 / 野果 / 帝果）。
 func isHuangguoProviderSource(source string) bool {
 	switch canonicalProviderSource(source) {
-	case sourceHuangguoAI, sourceHuangguoVideo, sourceHuangdou, sourceHongguo, sourceHuangju, sourceYeguo, sourceDSD, sourceCloudFront, sourceSorani, sourceGuipian, sourceHanxiaoquan:
+	case sourceHuangguo, sourceHuangguoAI, sourceHuangguoVideo, sourceHongguo, sourceHuangju, sourceCloudFront, sourceGuipian, sourceHanxiaoquan:
 		return true
 	default:
 		return false
@@ -112,24 +113,18 @@ func isHuangguoProviderSource(source string) bool {
 
 func canonicalProviderSource(source string) string {
 	switch strings.ToLower(strings.TrimSpace(source)) {
-	case "huangguo", "huangguoai", "huangguoai.com":
+	case "huangguo":
+		return sourceHuangguo
+	case "huangguoai", "huangguoai.com":
 		return sourceHuangguoAI
 	case "huangguo-video", "huangguo.video":
 		return sourceHuangguoVideo
-	case "huangdou", "tideember.cc", "xqjurgek.top":
-		return sourceHuangdou
 	case "hongguo", "hongguoduanju.com":
 		return sourceHongguo
 	case "huangju", "huangju.net", "api.huangju.net":
 		return sourceHuangju
-	case "yeguo", "ygdj7.com", "www.ygdj7.com", "ygdj15.com", "www.ygdj15.com", "analyze.buxefaex.cc", "delta.ygrwdsgt.cc", "yeguodj.com", "www.yeguodj.com":
-		return sourceYeguo
-	case "dsd", "dsd.com.se", "www.dsd.com.se":
-		return sourceDSD
 	case "cloudfront":
 		return sourceCloudFront
-	case "sorani", "sorani.net", "www.sorani.net", "api.sorani.cc", "sorani.cc":
-		return sourceSorani
 	case "guipian", "guipianwu.com", "www.guipianwu.com":
 		return sourceGuipian
 	case "hanxiaoquan", "jennyhow.com", "www.jennyhow.com":
@@ -230,21 +225,10 @@ func (d *Downloader) GetHuangguoChapters(ctx context.Context, source, sourceID s
 		return d.fetchHuangguoAIChapters(ctx, sourceID)
 	case sourceHuangguoVideo:
 		return d.fetchHuangguoVideoChapters(ctx, sourceID)
-	case sourceHuangdou:
-		return d.fetchHuangdouChapters(ctx, sourceID)
 	case sourceHongguo:
 		return d.fetchHongguoChapters(ctx, sourceID)
 	case sourceHuangju:
 		drama, chapters, err := d.fetchHuangjuDetail(ctx, sourceID)
-		return drama.DisplayTitle(), chapters, err
-	case sourceYeguo:
-		drama, chapters, err := d.fetchYeguoDetail(ctx, sourceID)
-		return drama.DisplayTitle(), chapters, err
-	case sourceDSD:
-		drama, chapters, err := d.fetchDSDDetail(ctx, sourceID)
-		return drama.DisplayTitle(), chapters, err
-	case sourceSorani:
-		drama, chapters, err := d.fetchSoraniDetail(ctx, sourceID)
 		return drama.DisplayTitle(), chapters, err
 	case sourceGuipian:
 		drama, chapters, err := d.fetchGuipianDetail(ctx, sourceID)

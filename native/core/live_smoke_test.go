@@ -26,6 +26,17 @@ func TestZZLiveSourceSmoke(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
+	tc := time.Now()
+	if categories, err := engine.nativeCategories(ctx, source, false); err != nil {
+		t.Logf("分类失败（%.1fs）：%v", time.Since(tc).Seconds(), err)
+	} else {
+		names := make([]string, 0, len(categories))
+		for _, category := range categories {
+			names = append(names, category.Name+"("+category.ID+")")
+		}
+		t.Logf("分类 %.1fs：%d 个 %v", time.Since(tc).Seconds(), len(categories), names)
+	}
+
 	t0 := time.Now()
 	catalog, err := engine.nativeCatalog(ctx, nativeInput{Source: source, Page: 1, Query: os.Getenv("GZ_LIVE_QUERY")})
 	if err != nil {

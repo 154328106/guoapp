@@ -58,14 +58,10 @@ func validNativeCategory(source, category string) bool {
 		return err == nil && id > 0
 	case sourceCloudFront:
 		return strings.TrimSpace(category) == category
+	case sourceHuangguo:
+		return validHuangguoMergedCategory(category)
 	case sourceHuangju:
 		return category == huangjuNewestCategory || validHuangjuID(category) && !strings.HasPrefix(category, "@")
-	case sourceYeguo:
-		return validYeguoCategory(category)
-	case sourceDSD:
-		return webProviderNumericID.MatchString(category)
-	case sourceSorani:
-		return validSoraniCategory(category)
 	case sourceGuipian:
 		return validGuipianCategory(category)
 	case sourceHanxiaoquan:
@@ -85,8 +81,8 @@ func (engine *nativeEngine) nativeCategories(ctx context.Context, source string,
 		return engine.hongguoCategories(ctx, all, force), nil
 	case sourceHuangguoAI:
 		return append(all, nativeAICategories...), nil
-	case sourceHuangdou:
-		return all, nil
+	case sourceHuangguo:
+		return engine.nativeHuangguoCategories(ctx, force)
 	}
 	engine.mu.Lock()
 	cached := append([]nativeCategory{}, engine.categoryOptions[source]...)
@@ -118,20 +114,6 @@ func (engine *nativeEngine) nativeCategories(ctx context.Context, source string,
 		if err == nil {
 			all = append(all, categories...)
 		}
-	case sourceYeguo:
-		var categories []nativeCategory
-		categories, err = d.fetchYeguoCategories(ctx)
-		if err == nil {
-			all = append(all, categories...)
-		}
-	case sourceDSD:
-		var categories []nativeCategory
-		categories, err = d.fetchDSDCategories(ctx, force)
-		if err == nil {
-			all = append(all, categories...)
-		}
-	case sourceSorani:
-		all = append(all, d.fetchSoraniCategories()...)
 	case sourceGuipian:
 		all = append(all, d.fetchGuipianCategories()...)
 	case sourceHanxiaoquan:
