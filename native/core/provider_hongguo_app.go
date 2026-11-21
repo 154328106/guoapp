@@ -36,6 +36,7 @@ type hongguoCatalogState struct {
 	Registered      bool                            `json:"registered,omitempty"`
 	HelperDeviceID  string                          `json:"helperDeviceId,omitempty"`
 	HelperInstallID string                          `json:"helperInstallId,omitempty"`
+	CDID            string                          `json:"cdid,omitempty"`
 	Feeds           map[string]hongguoCatalogCursor `json:"feeds"`
 }
 
@@ -64,7 +65,7 @@ func (downloader *Downloader) hongguoClient() *hongguoAppClient {
 		downloader.hongguo = &hongguoAppClient{
 			baseURL: hongguoAppBaseURL,
 			state: hongguoCatalogState{Version: 1, DeviceID: newHongguoDeviceID(), InstallID: newHongguoDeviceID(),
-				HelperDeviceID: newHongguoDeviceID(), HelperInstallID: newHongguoDeviceID(), Feeds: map[string]hongguoCatalogCursor{}},
+				HelperDeviceID: newHongguoDeviceID(), HelperInstallID: newHongguoDeviceID(), CDID: uuidLike(), Feeds: map[string]hongguoCatalogCursor{}},
 			details: map[string]hongguoDetailEntry{}, pending: map[string]*hongguoDetailCall{},
 			searches: map[string]hongguoSearchEntry{}, searchPending: map[string]*hongguoSearchCall{}, searchIDs: map[string]string{},
 			suggestions: map[string]hongguoSuggestionEntry{}, suggestPending: map[string]*hongguoSuggestionCall{},
@@ -93,6 +94,9 @@ func (downloader *Downloader) restoreHongguoCatalog(state *hongguoCatalogState) 
 	cloned := cloneHongguoCatalogState(state)
 	if !hongguoNumericID.MatchString(cloned.HelperDeviceID) || !hongguoNumericID.MatchString(cloned.HelperInstallID) {
 		cloned.HelperDeviceID, cloned.HelperInstallID = newHongguoDeviceID(), newHongguoDeviceID()
+	}
+	if cloned.CDID == "" {
+		cloned.CDID = uuidLike()
 	}
 	for name, cursor := range cloned.Feeds {
 		known := false
