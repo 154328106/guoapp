@@ -86,9 +86,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - edition: hongguojian
+          - edition: guozishule
             arguments: ''
-          - edition: zhenguojian
+          - edition: guozihuangle
             arguments: '--all-sources'
     steps:
       - uses: actions/checkout@v4
@@ -278,8 +278,8 @@ jobs:
           cat > notes.md <<EOF
           版本 ${VERSION}。两个版本功能相同，区别只在站源范围，按需选择：
 
-          - 果子熟了 hongguojian：仅红果站源
-          - 果子黄了 zhenguojian：全部站源
+          - 果子熟了 guozishule：仅红果站源
+          - 果子黄了 guozihuangle：全部站源
 
           Android：
           - *-arm64-v8a.apk：适用于较新的安卓设备
@@ -290,7 +290,7 @@ jobs:
           - *-ios-unsigned.ipa：未签名 IPA，可用相关工具安装
 
           Windows：
-          - *-windows-x64.zip：解压后运行 hongguojian.exe 或 zhenguojian.exe
+          - *-windows-x64.zip：解压后运行 guozishule.exe 或 guozihuangle.exe
 
           macOS：
           - *-macos-universal.dmg：适用于 macOS 12 及以上的 Apple 芯片和 Intel 电脑，打开后拖入 Applications；未经公证，首次打开前在终端执行 xattr -dr com.apple.quarantine /Applications/果子熟了.app（果子黄了为 果子黄了.app）

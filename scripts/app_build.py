@@ -8,7 +8,7 @@ class BuildVariant:
 
     @property
     def slug(self):
-        return 'zhenguojian' if self.all_sources else 'hongguojian'
+        return 'guozihuangle' if self.all_sources else 'guozishule'
 
     @property
     def arguments(self):
