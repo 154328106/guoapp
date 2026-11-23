@@ -198,7 +198,14 @@ func (d *Downloader) resolveHongguoMedia(ctx context.Context, task Task) (provid
 	if !hongguoNumericID.MatchString(videoID) || !hongguoNumericID.MatchString(seriesID) {
 		return providerMedia{}, fmt.Errorf("红果章节 ID 无效，请重新获取章节")
 	}
-	// 2026-11 起红果把取流换成 V5 签名的 multi_video_model/player/v1，旧端点（下面几条）一律返回空 body，V5 为首选
+	// 2026-11-21 上游换签名后旧 V5/App 端点全部空 body；field 25 新方言（HGCurrentPlayer.sign）为首选。
+	media, currentErr := d.resolveHongguoCurrentMedia(ctx, videoID)
+	if currentErr == nil {
+		return media, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return providerMedia{}, err
+	}
 	media, v5Err := d.resolveHongguoV5Media(ctx, videoID)
 	if v5Err == nil {
 		return media, nil
@@ -234,7 +241,7 @@ func (d *Downloader) resolveHongguoMedia(ctx context.Context, task Task) (provid
 	if apiErr == nil {
 		return media, nil
 	}
-	return providerMedia{}, fmt.Errorf("红果 V5 取流失败：%v；App 取流失败：%v；网页取流失败：%v；备用取流失败：%w", publicError(v5Err), publicError(nativeErr), publicError(pageErr), apiErr)
+	return providerMedia{}, fmt.Errorf("红果当前取流失败：%v；V5 取流失败：%v；App 取流失败：%v；网页取流失败：%v；备用取流失败：%w", publicError(currentErr), publicError(v5Err), publicError(nativeErr), publicError(pageErr), apiErr)
 }
 
 func (d *Downloader) resolveHongguoWebMedia(ctx context.Context, seriesID, videoID string) (providerMedia, error) {
