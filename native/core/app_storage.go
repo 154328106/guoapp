@@ -151,7 +151,7 @@ func (engine *nativeEngine) moveDownloads(ctx context.Context, parent string) er
 		if err != nil {
 			return errors.New("无法打开所选目录")
 		}
-		target = filepath.Join(filepath.Clean(resolved), "zhenguojian-downloads")
+		target = filepath.Join(filepath.Clean(resolved), nativeAppBuildSlug()+"-downloads")
 	}
 	manager := engine.downloads
 	engine.mu.Lock()

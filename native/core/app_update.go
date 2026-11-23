@@ -66,9 +66,9 @@ func nativeUpdateServers() []string {
 
 func nativeAppBuildSlug() string {
 	if buildAllSources == "true" {
-		return "zhenguojian"
+		return "guozihuangle"
 	}
-	return "hongguojian"
+	return "guozishule"
 }
 
 func nativeAppBuildNumber(version string) (int, bool) {

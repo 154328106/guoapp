@@ -157,7 +157,7 @@ func TestMigrationFailureLeavesSourceAndExistingTargetIntact(t *testing.T) {
 	engine, _ := storageFixture(t)
 	old := engine.downloads.root
 	parent := t.TempDir()
-	existing := filepath.Join(parent, "zhenguojian-downloads")
+	existing := filepath.Join(parent, "guozishule-downloads")
 	os.Mkdir(existing, 0700)
 	os.WriteFile(filepath.Join(existing, "user-file"), []byte("keep"), 0600)
 	if err := engine.moveDownloads(context.Background(), parent); err == nil {
@@ -178,7 +178,7 @@ func TestMigrationFailureLeavesSourceAndExistingTargetIntact(t *testing.T) {
 	if _, err := os.Stat(old); err != nil {
 		t.Fatal("source removed after cancellation")
 	}
-	if _, err := os.Stat(filepath.Join(empty, "zhenguojian-downloads")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(empty, "guozishule-downloads")); !os.IsNotExist(err) {
 		t.Fatal("partial target not cleaned")
 	}
 }
@@ -202,7 +202,7 @@ func TestStorageLeaseRejectsParallelAndRetiredTasks(t *testing.T) {
 }
 
 func TestPathsOverlapAllowsSiblingsAndOtherVolumes(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "zhenguojian-downloads")
+	root := filepath.Join(t.TempDir(), "guozishule-downloads")
 	cases := []struct {
 		path    string
 		overlap bool
@@ -211,7 +211,7 @@ func TestPathsOverlapAllowsSiblingsAndOtherVolumes(t *testing.T) {
 		{filepath.Join(root, "nested"), true},
 		{filepath.Dir(root), true},
 		{filepath.Join(filepath.Dir(root), "sibling"), false},
-		{filepath.Join(filepath.Dir(root), "..zhenguojian-downloads"), false},
+		{filepath.Join(filepath.Dir(root), "..guozishule-downloads"), false},
 	}
 	if runtime.GOOS == "windows" {
 		volume := "D:"
@@ -221,7 +221,7 @@ func TestPathsOverlapAllowsSiblingsAndOtherVolumes(t *testing.T) {
 		cases = append(cases, struct {
 			path    string
 			overlap bool
-		}{volume + `\zhenguojian-downloads`, false})
+		}{volume + `\guozishule-downloads`, false})
 	}
 	for _, item := range cases {
 		if got := nativePathsOverlap(root, item.path); got != item.overlap {

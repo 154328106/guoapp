@@ -36,7 +36,7 @@ python3 scripts/build_ios.py --core-only [--simulator]
 python3 scripts/build_ios.py --export-options /path/to/ExportOptions.plist
 ~~~
 
-产物在 `dist/android`、`dist/windows`、`dist/ios`、`dist/macos`，果子熟了以 `hongguojian-` 开头，果子黄了以 `zhenguojian-` 开头。macOS 出 arm64 + x86_64 通用 dmg；dmg 的安装窗口（背景图、图标位置、隐藏工具栏）由 `dmgbuild` 写入 `.DS_Store`，打包机需要 `pip install dmgbuild Pillow`，没装时会退回普通镜像并提示。默认 ad-hoc 签名，从网络下载的 dmg 在其他 Mac 上首次打开会被 Gatekeeper 拦一次（右键「打开」，或执行 `xattr -dr com.apple.quarantine /Applications/果子熟了.app`）。有 Developer ID 时用 `package_release.py --platform macos --identity "Developer ID Application: ..."` 重新打包并公证，才能免掉这一步。本机 Android 签名使用 `android/key.properties`（不入库）。
+产物在 `dist/android`、`dist/windows`、`dist/ios`、`dist/macos`，果子熟了以 `guozishule-` 开头，果子黄了以 `guozihuangle-` 开头。macOS 出 arm64 + x86_64 通用 dmg；dmg 的安装窗口（背景图、图标位置、隐藏工具栏）由 `dmgbuild` 写入 `.DS_Store`，打包机需要 `pip install dmgbuild Pillow`，没装时会退回普通镜像并提示。默认 ad-hoc 签名，从网络下载的 dmg 在其他 Mac 上首次打开会被 Gatekeeper 拦一次（右键「打开」，或执行 `xattr -dr com.apple.quarantine /Applications/果子熟了.app`）。有 Developer ID 时用 `package_release.py --platform macos --identity "Developer ID Application: ..."` 重新打包并公证，才能免掉这一步。本机 Android 签名使用 `android/key.properties`（不入库）。
 
 其他脚本：`generate_brand_assets.py` 生成各平台图标——果子熟了用 `scripts/brand_icon.png`（没有则 `brand_icon.svg`），加 `--all-sources` 用 `scripts/brand_icon_all_sources.png` 生成果子黄了的安卓 `ic_launcher_all_sources*`、iOS `AppIconAllSources.appiconset` 和电视横幅（安卓清单按 `appIcon` 占位符选，iOS 由 `build_ios.py --all-sources` 构建时换进 AppIcon；Windows/macOS 两版仍共用果子熟了图标）。两版包名分开、可同时安装：安卓果子黄了加后缀 `.guozihuangle`，iOS 果子熟了在「Thin Binary」阶段改成 `com.duanju.duanjuApp.guozishule`。`clear_app_data.py`、`clear_catalog_cache.py` 清理 Windows 上的应用数据和剧库缓存。
 

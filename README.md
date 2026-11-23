@@ -50,12 +50,12 @@ Telegram：[交流群组](https://t.me/+c9YKHp7FjSk0MjI1) · [更新频道](http
 
 ## 安装
 
-在 [Releases](../../releases) 下载对应平台的包，文件名以 `hongguojian-` 开头的是果子熟了，`zhenguojian-` 开头的是果子黄了。
+在 [Releases](../../releases) 下载对应平台的包，文件名以 `guozishule-` 开头的是果子熟了，`guozihuangle-` 开头的是果子黄了。
 
 | 平台 | 安装包                                                                                    |
 | --- |----------------------------------------------------------------------------------------|
 | Android 7.0+ | arm64-v8a / armeabi-v7a / x86_64 三种 APK，按设备架构选择（大多数手机选 arm64-v8a）；同一签名可覆盖升级，旧证书版本需卸载重装 |
-| Windows 10/11 x64 | 完整 ZIP，解压后运行 `hongguojian.exe` / `zhenguojian.exe`，保留所有 DLL 与 `data` 目录                |
+| Windows 10/11 x64 | 完整 ZIP，解压后运行 `guozishule.exe` / `guozihuangle.exe`，保留所有 DLL 与 `data` 目录                |
 | iOS 15.1+ | 未签名 IPA，需自行签名或用 iloader 等工具侧载                                                          |
 | macOS 12+ | 通用 dmg（Apple 芯片与 Intel），打开后拖入「应用程序」；未经公证，首次打开前执行 `xattr -dr com.apple.quarantine /Applications/果子熟了.app`（果子黄了为 `果子黄了.app`） |
 

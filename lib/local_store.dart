@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_build.dart';
 import 'catalog_sort.dart';
 import 'diary_service.dart';
 import 'download_preferences.dart';
@@ -19,6 +20,13 @@ const _usersFile = LocalFiles.marker;
 const _settingsFile = 'settings.json';
 const _displayModes = {'auto', 'television', 'phone', 'pad', 'window'};
 const _themeModes = {'light', 'dark', 'system'};
+// 兼容旧备份：旧版写 zhenguojian/hongguojian，新版写 guozihuangle/guozishule。
+const _backupApps = {
+  'zhenguojian',
+  'hongguojian',
+  'guozihuangle',
+  'guozishule',
+};
 const _movedFlags = {
   'followSystemColor': 'followSystemColor',
   'checkUpdates': 'checkUpdates',
@@ -947,7 +955,7 @@ class LocalStore extends ChangeNotifier {
     }
     final content = jsonEncode({
       'schema': 1,
-      'app': 'zhenguojian',
+      'app': appSlug,
       'profiles': _profiles.map((profile) => profile.toJson()).toList(),
       'displayMode': displayMode,
       'themeMode': themeMode,
@@ -974,7 +982,7 @@ class LocalStore extends ChangeNotifier {
       throw const FormatException('备份文件过大');
     }
     final data = jsonDecode(content) as Map<String, dynamic>;
-    if (data['schema'] != 1 || data['app'] != 'zhenguojian') {
+    if (data['schema'] != 1 || !_backupApps.contains(data['app'])) {
       throw const FormatException('不支持的备份格式');
     }
     final profiles = _readProfiles(data['profiles']);
@@ -1141,7 +1149,7 @@ class LocalStore extends ChangeNotifier {
   Future<String> exportRecoveryData() async {
     if (_configurationError == null) throw StateError('请从设置中导出备份');
     return jsonEncode({
-      'app': 'zhenguojian',
+      'app': appSlug,
       'recovery': true,
       'values': {
         for (final key in preferences.getKeys())

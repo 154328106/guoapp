@@ -100,7 +100,7 @@ func TestNativeReportUsage(t *testing.T) {
 		t.Fatalf("payloads = %d", len(payloads))
 	}
 	first := payloads[0]
-	if !nativeInstallIDPattern.MatchString(first["id"]) || first["version"] != "1.0.1+101" || first["platform"] != runtime.GOOS || first["build"] != "hongguojian" && first["build"] != "zhenguojian" {
+	if !nativeInstallIDPattern.MatchString(first["id"]) || first["version"] != "1.0.1+101" || first["platform"] != runtime.GOOS || first["build"] != "guozishule" && first["build"] != "guozihuangle" {
 		t.Fatalf("payload = %+v", first)
 	}
 	if payloads[1]["id"] != first["id"] {

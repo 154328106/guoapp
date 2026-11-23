@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-EXECUTABLES = ("zhenguojian.exe", "hongguojian.exe")
+EXECUTABLES = ("guozihuangle.exe", "guozishule.exe")
 
 
 def running(executable: str) -> bool:
