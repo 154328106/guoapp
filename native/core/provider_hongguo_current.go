@@ -2,6 +2,10 @@ package core
 
 // 红果取流「当前播放器」方言（field 25 新方言）。
 //
+// 现状：2026-11-23 起上游把这条方言整体软拒绝（HTTP 200 + 空 body），现行主路径已换成
+// provider_hongguo_playback_v5.go（7.4.5.32 / field 21 = 312 / preload/v1）；
+// 本文件保留为协议回滚兜底，由 resolveHongguoLegacyPlayerMedia 驱动。
+//
 // 协议与变换结构逐行移植自 iDuanJu 的 STV/Providers/Hongguo/：
 //   - HGCurrentPlayer.swift   —— sign / factor / protobuf / compute / gorgon / helios / ks / transform / mid / medusa
 //   - HGCurrentProfile.swift  —— 3428 字节常量（material/header/boxes/initial/checksum/factorIV/factorTable/padding）
@@ -1060,12 +1064,31 @@ func (downloader *Downloader) hongguoCurrentParseModel(ctx context.Context, cont
 	return downloader.hongguoMediaFromModel(ctx, parsed)
 }
 
-// resolveHongguoCurrentMedia —— resolvePure → resolveCurrentBatch（AB-off/AB-on）主路径。
-// 任一端点空 body 软拒绝时按 Swift resolveFresh 的顺序回退，并在整体软拒绝后重铸一次设备身份。
+// resolveHongguoCurrentMedia —— 红果取流总入口。
+// 现行协议是 V5 播放签名（provider_hongguo_playback_v5.go：preload/v1 → video_tab/v1）；
+// 只有它整体被软拒绝时才回退下面的 field-25 旧方言，供上游回滚协议时兜底。
 func (downloader *Downloader) resolveHongguoCurrentMedia(ctx context.Context, videoID string) (providerMedia, error) {
 	if !hongguoNumericID.MatchString(videoID) {
 		return providerMedia{}, errors.New("红果视频 ID 无效")
 	}
+	media, v5Err := downloader.resolveHongguoPlaybackV5(ctx, videoID)
+	if v5Err == nil {
+		return media, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return providerMedia{}, err
+	}
+	legacyMedia, legacyErr := downloader.resolveHongguoLegacyPlayerMedia(ctx, videoID)
+	if legacyErr == nil {
+		return legacyMedia, nil
+	}
+	return providerMedia{}, fmt.Errorf("%v；field-25 旧方言：%v", publicError(v5Err), publicError(legacyErr))
+}
+
+// resolveHongguoLegacyPlayerMedia —— field 25 方言（2026-11-21 上线，11-23 起被上游整体软拒绝）。
+// resolvePure → resolveCurrentBatch（AB-off/AB-on），空 body 时按 Swift resolveFresh 的顺序回退，
+// 并在整体软拒绝后重铸一次设备身份。
+func (downloader *Downloader) resolveHongguoLegacyPlayerMedia(ctx context.Context, videoID string) (providerMedia, error) {
 	id, err := downloader.ensureHongguoPlayerIdentity(ctx)
 	if err != nil {
 		return providerMedia{}, err
